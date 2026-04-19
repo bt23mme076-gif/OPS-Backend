@@ -89,13 +89,13 @@ export class AuthService {
         role: invite.role,
         status: 'active',
         invitedBy: invite.invitedBy,
-        joinedAt: new Date().toISOString(),
+        joinedAt: new Date(),
       })
       .returning();
 
     await this.db
       .update(invites)
-      .set({ status: 'accepted', acceptedAt: new Date().toISOString() })
+      .set({ status: 'accepted', acceptedAt: new Date() })
       .where(eq(invites.id, invite.id));
 
     const token = this.jwtService.sign({
