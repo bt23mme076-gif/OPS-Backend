@@ -8,7 +8,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.setGlobalPrefix('api');
-  app.use(cookieParser()):
+  app.use(cookieParser());
 
   const allowedOrigins = [
     'https://ops.atyant.in',
