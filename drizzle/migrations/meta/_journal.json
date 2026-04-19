@@ -15,6 +15,13 @@
       "when": 1776627900136,
       "tag": "0001_previous_human_torch",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1776629098904,
+      "tag": "0002_nice_mentallo",
+      "breakpoints": true
     }
   ]
 }

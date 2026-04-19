@@ -68,6 +68,7 @@ export const sourceEnum = pgEnum('source', [
   'cold_outreach',
   'inbound',
   'college',
+  'campus',
   'organic',
 ]);
 
@@ -299,7 +300,7 @@ export const sessions = pgTable('sessions', {
     .references(() => mentors.id),
   sessionType: sessionTypeEnum('session_type').notNull(),
   format: sessionFormatEnum('format').notNull(),
-  scheduledAt: timestamp('scheduled_at').notNull(),
+  scheduledAt: timestamp('scheduled_at', { mode: 'string' }).notNull(),
   status: sessionStatusEnum('status').notNull().default('scheduled'),
   meetLink: text('meet_link'),
   postSessionSummaryFilled: boolean('post_session_summary_filled')
@@ -314,8 +315,8 @@ export const sessions = pgTable('sessions', {
   createdBy: uuid('created_by')
     .notNull()
     .references(() => users.id),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { mode: 'string' }).defaultNow().notNull(),
 });
 
 // ─── ROLES / MARKETPLACE ──────────────────────────────────────────────────────
@@ -338,8 +339,8 @@ export const rolesPosted = pgTable('roles_posted', {
   createdBy: uuid('created_by')
     .notNull()
     .references(() => users.id),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { mode: 'string' }).defaultNow().notNull(),
 });
 
 export const applications = pgTable('applications', {
@@ -354,9 +355,9 @@ export const applications = pgTable('applications', {
   isBlindReferralQueued: boolean('is_blind_referral_queued')
     .notNull()
     .default(false),
-  mentorRevealedAt: timestamp('mentor_revealed_at'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  mentorRevealedAt: timestamp('mentor_revealed_at', { mode: 'string' }),
+  createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { mode: 'string' }).defaultNow().notNull(),
 });
 
 // ─── REJECTION INTELLIGENCE ───────────────────────────────────────────────────
@@ -370,7 +371,7 @@ export const rejectionTags = pgTable('rejection_tags', {
   taggedBy: uuid('tagged_by')
     .notNull()
     .references(() => users.id),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
+  createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
 });
 
 export const rejectionRoadmaps = pgTable('rejection_roadmaps', {
@@ -382,8 +383,8 @@ export const rejectionRoadmaps = pgTable('rejection_roadmaps', {
     .notNull()
     .references(() => students.id),
   roadmapContent: jsonb('roadmap_content').notNull(),
-  openedAt: timestamp('opened_at'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
+  openedAt: timestamp('opened_at', { mode: 'string' }),
+  createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
 });
 
 // ─── ANSWER CARDS ─────────────────────────────────────────────────────────────
@@ -400,8 +401,8 @@ export const answerCards = pgTable('answer_cards', {
   timeline: varchar('timeline', { length: 255 }),
   mistakesToAvoid: text('mistakes_to_avoid'),
   isPublished: boolean('is_published').notNull().default(false),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { mode: 'string' }).defaultNow().notNull(),
 });
 
 // ─── NOTIFICATIONS ────────────────────────────────────────────────────────────
@@ -416,7 +417,7 @@ export const notifications = pgTable('notifications', {
   message: text('message').notNull(),
   metadata: jsonb('metadata').default({}),
   isRead: boolean('is_read').notNull().default(false),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
+  createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
 });
 
 // ─── RELATIONS ────────────────────────────────────────────────────────────────
