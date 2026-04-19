@@ -44,7 +44,7 @@ export class MailService {
   }
 
   async sendInvite(email: string, token: string) {
-    const link = `${this.frontendUrl}/auth/invite?token=${token}`;
+    const link = `${this.frontendUrl}/invite?token=${token}`;
     await this.send(
       email,
       'You have been invited to Atyant Ops',
