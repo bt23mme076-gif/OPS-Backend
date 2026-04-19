@@ -66,8 +66,8 @@ export class MentorsService {
       phone:          dto.phone,
       linkedinUrl:    dto.linkedin,
       currentCompany: dto.company,
-      domain:         dto.domain as any,
-      source:         dto.source as any,
+      domain:         dto.domain && dto.domain.trim() ? (dto.domain as any) : null,
+      source:         dto.source && dto.source.trim() ? (dto.source as any) : null,
       notes:          dto.notes,
       createdBy,
     }).returning();
@@ -91,8 +91,8 @@ export class MentorsService {
     if (dto.phone !== undefined)   updateData.phone          = dto.phone;
     if (dto.linkedin !== undefined) updateData.linkedinUrl   = dto.linkedin;
     if (dto.company !== undefined) updateData.currentCompany = dto.company;
-    if (dto.domain !== undefined)  updateData.domain         = dto.domain;
-    if (dto.source !== undefined)  updateData.source         = dto.source;
+    if (dto.domain !== undefined)  updateData.domain         = dto.domain && dto.domain.trim() ? dto.domain : null;
+    if (dto.source !== undefined)  updateData.source         = dto.source && dto.source.trim() ? dto.source : null;
     if (dto.notes !== undefined)   updateData.notes          = dto.notes;
     if (dto.stage !== undefined)   updateData.stage          = dto.stage;
 

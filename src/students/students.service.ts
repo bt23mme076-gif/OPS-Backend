@@ -66,7 +66,7 @@ export class StudentsService {
       email:     dto.email,
       phone:     dto.phone,
       branch:    dto.grade,     // reuse branch for grade (closest match)
-      source:    dto.source as any,
+      source:    dto.source && dto.source.trim() ? (dto.source as any) : null,
       notes,
       createdBy,
     }).returning();
@@ -87,7 +87,7 @@ export class StudentsService {
     if (dto.email !== undefined)  updateData.email    = dto.email;
     if (dto.phone !== undefined)  updateData.phone    = dto.phone;
     if (dto.grade !== undefined)  updateData.branch   = dto.grade;
-    if (dto.source !== undefined) updateData.source   = dto.source;
+    if (dto.source !== undefined) updateData.source   = dto.source && dto.source.trim() ? dto.source : null;
     if (dto.notes !== undefined)  updateData.notes    = dto.notes;
     if (dto.stage !== undefined)  updateData.stage    = dto.stage;
 
