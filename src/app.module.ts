@@ -10,6 +10,8 @@ import { RolesModule } from './roles/roles.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { TasksModule } from './tasks/tasks.module';
+import { MongoModule } from './database/mongo.module';
+import { AtyantModule } from './atyant/atyant.module';
 
 @Module({
   imports: [
@@ -24,6 +26,8 @@ import { TasksModule } from './tasks/tasks.module';
     NotificationsModule,
     DashboardModule,
     TasksModule,
+    MongoModule,
+    AtyantModule
   ],
 })
 export class AppModule {}
