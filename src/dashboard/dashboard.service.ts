@@ -14,7 +14,7 @@ export class DashboardService {
   // GET /dashboard — shape expected by frontend
   async getDashboard() {
     const now = new Date();
-    const weekAgo = subDays(now, 7);
+    const weekAgo = subDays(now, 7).toISOString();
 
     const [[totalMentors], [activeMentors], [totalStudents], [activeStudents], [sessionsThisWeek], [pendingTasks]] =
       await Promise.all([
@@ -25,7 +25,7 @@ export class DashboardService {
           sql`${students.stage} NOT IN ('dropped_off')`,
         ),
         this.db.select({ count: count() }).from(sessions).where(
-          gte(sessions.scheduledAt, weekAgo),
+          sql`${sessions.scheduledAt} >= ${weekAgo}::timestamp`,
         ),
         // Tasks — try/catch in case table doesn't exist yet
         this.db.execute(sql`SELECT COUNT(*) as count FROM tasks WHERE status != 'done'`).then(
@@ -70,8 +70,8 @@ export class DashboardService {
   // GET /dashboard/omtm — detailed OMTM metrics (legacy)
   async getOmtm() {
     const now = new Date();
-    const thirtyDaysAgo = subDays(now, 30);
-    const thisMonthStart = startOfMonth(now);
+    const thirtyDaysAgo = subDays(now, 30).toISOString();
+    const thisMonthStart = startOfMonth(now).toISOString();
 
     const [activeStudentsResult] = await this.db
       .select({ count: count() })
@@ -82,7 +82,7 @@ export class DashboardService {
     const [inviteResult] = await this.db
       .select({ total: sql<number>`SUM(${students.interviewInvitesReceived})` })
       .from(students)
-      .where(gte(students.updatedAt, thirtyDaysAgo));
+      .where(sql`${students.updatedAt} >= ${thirtyDaysAgo}::timestamp`);
     const totalInvites = Number(inviteResult?.total || 0);
 
     const inviteRatePer30Days = activeStudents > 0

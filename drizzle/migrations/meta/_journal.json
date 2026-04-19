@@ -8,6 +8,13 @@
       "when": 1713513600000,
       "tag": "0001_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1776627900136,
+      "tag": "0001_previous_human_torch",
+      "breakpoints": true
     }
   ]
 }
