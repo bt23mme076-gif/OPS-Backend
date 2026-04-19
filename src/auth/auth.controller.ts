@@ -15,7 +15,7 @@ const COOKIE_OPTIONS = {
   path: '/',
 };
 
-@ApiTags('Auth')
+@ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
