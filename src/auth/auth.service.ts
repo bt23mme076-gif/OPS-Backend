@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { eq, and, gt } from 'drizzle-orm';
+import { eq, and, gt, sql } from 'drizzle-orm';
 import * as bcrypt from 'bcryptjs';
 import { DB } from '../database/database.module';
 import {
@@ -62,7 +62,7 @@ export class AuthService {
         and(
           eq(invites.token, dto.token),
           eq(invites.status, 'pending'),
-          gt(invites.expiresAt, new Date()),
+          gt(invites.expiresAt, sql`now()`),  // ← fixed
         ),
       )
       .limit(1);
@@ -89,13 +89,13 @@ export class AuthService {
         role: invite.role,
         status: 'active',
         invitedBy: invite.invitedBy,
-        joinedAt: new Date(),
+        joinedAt: new Date().toISOString(),
       })
       .returning();
 
     await this.db
       .update(invites)
-      .set({ status: 'accepted', acceptedAt: new Date() })
+      .set({ status: 'accepted', acceptedAt: new Date().toISOString() })
       .where(eq(invites.id, invite.id));
 
     const token = this.jwtService.sign({

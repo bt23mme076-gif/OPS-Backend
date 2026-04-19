@@ -75,7 +75,7 @@ export class UsersService {
     if (existingInvite) {
       // Resend — update token and expiry
       const token = uuidv4();
-      const expiresAt = addDays(new Date(), 7);
+      const expiresAt = addDays(new Date(), 7).toISOString();
       await this.db
         .update(invites)
         .set({ token, expiresAt })
@@ -86,7 +86,7 @@ export class UsersService {
     }
 
     const token = uuidv4();
-    const expiresAt = addDays(new Date(), 7);
+    const expiresAt = addDays(new Date(), 7).toISOString();
 
     await this.db.insert(invites).values({
       email: dto.email.toLowerCase(),
@@ -129,6 +129,7 @@ export class UsersService {
       title: 'Account Deactivated',
       message: 'Your account has been deactivated. Contact your admin for access.',
       metadata: { deactivatedBy: requesterId },
+      createdAt: new Date().toISOString(),
     });
 
     return { message: 'User deactivated successfully' };

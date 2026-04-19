@@ -78,6 +78,7 @@ export class MentorsService {
       activityType: 'created',
       performedBy:  createdBy,
       metadata:     { name: dto.name },
+      createdAt:    new Date().toISOString(),
     });
 
     return toFrontend(mentor);
@@ -102,6 +103,7 @@ export class MentorsService {
     await this.db.insert(pipelineActivities).values({
       entityType: 'mentor', entityId: id,
       activityType: 'field_updated', performedBy: updatedBy,
+      createdAt: new Date().toISOString(),
     });
 
     return toFrontend(updated);
@@ -117,6 +119,7 @@ export class MentorsService {
       entityType: 'mentor', entityId: id,
       activityType: 'stage_changed', performedBy: updatedBy,
       metadata: { newStage: stage },
+      createdAt: new Date().toISOString(),
     });
 
     return toFrontend(updated);
@@ -132,6 +135,7 @@ export class MentorsService {
       entityType: 'mentor', entityId: id,
       activityType: 'assigned', performedBy: updatedBy,
       metadata: { assignedTo: assignToId },
+      createdAt: new Date().toISOString(),
     });
 
     return toFrontend(updated);
@@ -149,6 +153,7 @@ export class MentorsService {
     await this.db.insert(pipelineActivities).values({
       entityType: 'mentor', entityId: id,
       activityType: 'note_added', performedBy: updatedBy,
+      createdAt: new Date().toISOString(),
     });
 
     return toFrontend(updated);

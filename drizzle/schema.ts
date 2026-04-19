@@ -174,9 +174,9 @@ export const users = pgTable('users', {
   status: userStatusEnum('status').notNull().default('active'),
   avatarUrl: text('avatar_url'),
   invitedBy: uuid('invited_by').references(() => users.id),
-  joinedAt: timestamp('joined_at'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  joinedAt: timestamp('joined_at', { mode: 'string' }),
+  createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { mode: 'string' }).defaultNow().notNull(),
 });
 
 export const userPermissions = pgTable('user_permissions', {
@@ -187,7 +187,7 @@ export const userPermissions = pgTable('user_permissions', {
   module: varchar('module', { length: 100 }).notNull(),
   canRead: boolean('can_read').notNull().default(true),
   canWrite: boolean('can_write').notNull().default(false),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
+  createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
 });
 
 export const invites = pgTable('invites', {
@@ -199,9 +199,9 @@ export const invites = pgTable('invites', {
   invitedBy: uuid('invited_by')
     .notNull()
     .references(() => users.id),
-  expiresAt: timestamp('expires_at').notNull(),
-  acceptedAt: timestamp('accepted_at'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
+  expiresAt: timestamp('expires_at', { mode: 'string' }).notNull(),
+  acceptedAt: timestamp('accepted_at', { mode: 'string' }),
+  createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
 });
 
 // ─── MENTORS ──────────────────────────────────────────────────────────────────
@@ -232,9 +232,9 @@ export const mentors = pgTable('mentors', {
   sessionsCount: integer('sessions_count').notNull().default(0),
   rolesPostedCount: integer('roles_posted_count').notNull().default(0),
   answerCardsCount: integer('answer_cards_count').notNull().default(0),
-  lastActivityAt: timestamp('last_activity_at').defaultNow(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  lastActivityAt: timestamp('last_activity_at', { mode: 'string' }).defaultNow(),
+  createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { mode: 'string' }).defaultNow().notNull(),
 });
 
 // ─── STUDENTS ─────────────────────────────────────────────────────────────────
@@ -268,9 +268,9 @@ export const students = pgTable('students', {
     .references(() => users.id),
   tags: text('tags').array().default(sql`'{}'::text[]`),
   notes: text('notes'),
-  lastActivityAt: timestamp('last_activity_at').defaultNow(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  lastActivityAt: timestamp('last_activity_at', { mode: 'string' }).defaultNow(),
+  createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { mode: 'string' }).defaultNow().notNull(),
 });
 
 // ─── PIPELINE ACTIVITY LOG ────────────────────────────────────────────────────
@@ -284,7 +284,7 @@ export const pipelineActivities = pgTable('pipeline_activities', {
     .notNull()
     .references(() => users.id),
   metadata: jsonb('metadata').default({}),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
+  createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
 });
 
 // ─── SESSIONS ─────────────────────────────────────────────────────────────────

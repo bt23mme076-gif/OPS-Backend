@@ -75,6 +75,7 @@ export class StudentsService {
       entityType: 'student', entityId: student.id,
       activityType: 'created', performedBy: createdBy,
       metadata: { name: dto.name },
+      createdAt: new Date().toISOString(),
     });
 
     return toFrontend(student);
@@ -97,6 +98,7 @@ export class StudentsService {
     await this.db.insert(pipelineActivities).values({
       entityType: 'student', entityId: id,
       activityType: 'field_updated', performedBy: updatedBy,
+      createdAt: new Date().toISOString(),
     });
 
     return toFrontend(updated);
@@ -112,6 +114,7 @@ export class StudentsService {
       entityType: 'student', entityId: id,
       activityType: 'stage_changed', performedBy: updatedBy,
       metadata: { newStage: stage },
+      createdAt: new Date().toISOString(),
     });
 
     return toFrontend(updated);
@@ -137,6 +140,7 @@ export class StudentsService {
     await this.db.insert(pipelineActivities).values({
       entityType: 'student', entityId: id,
       activityType: 'note_added', performedBy: updatedBy,
+      createdAt: new Date().toISOString(),
     });
 
     return toFrontend(updated);
