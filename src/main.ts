@@ -1,32 +1,26 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import * as cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  app.setGlobalPrefix('api/v1');
-  app.use(cookieParser());
+  app.setGlobalPrefix('api');
 
   const allowedOrigins = [
-    process.env.FRONTEND_URL || 'http://localhost:3000',
     'https://ops.atyant.in',
-    'http://localhost:3000',
-    'http://localhost:3001',
-    'http://localhost:3002',
+    'https://ops_api.atyant.in',
   ];
 
   app.enableCors({
-    // origin: (origin, callback) => {
-    //   if (!origin || allowedOrigins.includes(origin)) {
-    //     callback(null, true);
-    //   } else {
-    //     callback(new Error(`CORS blocked: ${origin}`));
-    //   }
-    // },
-    origin:true,
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS blocked: ${origin}`));
+      }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
