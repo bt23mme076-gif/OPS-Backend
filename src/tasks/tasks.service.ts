@@ -94,7 +94,7 @@ export class TasksService {
         ${dto.priority ?? 'medium'},
         ${dto.assignedToId ?? null},
         ${createdBy},
-        ${dto.dueAt ? new Date(dto.dueAt) : null}
+        ${dto.dueAt ? new Date(dto.dueAt).toISOString() : null}
       )
       RETURNING *
     `);
