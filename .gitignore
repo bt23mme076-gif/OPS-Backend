@@ -1,0 +1,61 @@
+# =================================================================
+# 1. SECURITY & ENVIRONMENT (Most Important)
+# =================================================================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.pem
+*.key
+
+# =================================================================
+# 2. DEPENDENCIES (Frontend & Backend)
+# =================================================================
+node_modules/
+jspm_packages/
+package-lock.json
+# Uncomment the line below if you prefer to keep lockfiles (usually recommended)
+# !package-lock.json 
+
+# =================================================================
+# 3. FRONTEND BUILDS & TOOLS
+# =================================================================
+dist/
+build/
+.next/
+out/
+.svelte-kit/
+.cache/
+.eslintcache
+*.tsbuildinfo
+
+# =================================================================
+# 4. BACKEND & DATABASE
+# =================================================================
+# SQLite and local DB files
+*.db
+*.sqlite
+*.sqlite-journal
+
+# Database dumps and logs
+*.sql.gz
+*.sql.bak
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# =================================================================
+# 5. OS & IDE SETTINGS
+# =================================================================
+.DS_Store
+Thumbs.db
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+.idea/
+*.iml
+*.iws

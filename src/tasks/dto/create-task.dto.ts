@@ -1,0 +1,12 @@
+import { IsString, IsOptional } from 'class-validator';
+
+export class CreateTaskDto {
+  @IsString() title: string;
+  @IsOptional() @IsString() description?: string;
+  @IsOptional() @IsString() status?: string;
+  @IsOptional() @IsString() priority?: string;
+  @IsOptional() @IsString() assignedToId?: string;
+  @IsOptional() @IsString() dueAt?: string;     // frontend sends dueAt
+  @IsOptional() @IsString() mentorId?: string;
+  @IsOptional() @IsString() studentId?: string;
+}
