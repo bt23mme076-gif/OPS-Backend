@@ -18,28 +18,43 @@ export class MailService {
     this.fromEmail = config.get('MAIL_FROM') || 'bt23mme076@students.vnit.ac.in';
     this.frontendUrl = config.get('FRONTEND_URL') || 'https://ops.atyant.in';
 
+    const smtpPort = parseInt(config.get('SMTP_PORT') || '465');
+    
     this.transporter = nodemailer.createTransport({
       host: config.get('SMTP_HOST'),
-      port: parseInt(config.get('SMTP_PORT') || '465'),
-      secure: true,
+      port: smtpPort,
+      secure: smtpPort === 465, // true for 465, false for other ports like 587
       auth: {
         user: config.get('SMTP_USER'),
         pass: config.get('SMTP_PASS'),
       },
+      logger: true, // Enable logging
+      debug: true, // Include SMTP traffic in logs
+    });
+
+    // Verify connection on startup
+    this.transporter.verify((error, success) => {
+      if (error) {
+        this.logger.error('SMTP connection failed:', error);
+      } else {
+        this.logger.log('SMTP server is ready to send emails');
+      }
     });
   }
 
   private async send(to: string, subject: string, html: string) {
     try {
-      await this.transporter.sendMail({
+      const info = await this.transporter.sendMail({
         from: `"Atyant Ops" <${this.fromEmail}>`,
         to,
         subject,
         html,
       });
-      this.logger.log(`Email sent to ${to}: ${subject}`);
+      this.logger.log(`✅ Email sent to ${to}: ${subject} (MessageID: ${info.messageId})`);
+      return info;
     } catch (err) {
-      this.logger.error(`Failed to send email to ${to}`, err);
+      this.logger.error(`❌ Failed to send email to ${to}: ${subject}`, err.stack || err);
+      throw err; // Re-throw so caller knows it failed
     }
   }
 
