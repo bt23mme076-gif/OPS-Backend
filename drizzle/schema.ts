@@ -255,7 +255,7 @@ export const userPermissions = pgTable('user_permissions', {
 export const invites = pgTable('invites', {
   id: uuid('id').primaryKey().defaultRandom(),
   email: varchar('email', { length: 255 }).notNull(),
-  role: userRoleEnum('role').notNull().default('viewer'),
+  role: userRoleEnum('role').notNull().default('INTERN'),
   token: text('token').notNull().unique(),
   status: inviteStatusEnum('status').notNull().default('pending'),
   invitedBy: uuid('invited_by')
