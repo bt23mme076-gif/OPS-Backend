@@ -39,8 +39,17 @@ export class UsersController {
   @Post('invite')
   @UseGuards(RolesGuard)
   @Roles('super_admin', 'admin')
-  inviteUser(@Body() dto: InviteUserDto, @CurrentUser() user: any) {
-    return this.usersService.inviteUser(dto, user.id);
+  async inviteUser(@Body() dto: InviteUserDto, @CurrentUser() user: any) {
+    console.log('🟢 POST /users/invite called by:', user?.email || user?.id);
+    console.log('🟢 Request body:', dto);
+    try {
+      const result = await this.usersService.inviteUser(dto, user.id);
+      console.log('🟢 Response:', result);
+      return result;
+    } catch (error) {
+      console.log('🔴 Error in inviteUser:', error.message);
+      throw error;
+    }
   }
 
   @Patch(':id/deactivate')
@@ -69,5 +78,13 @@ export class UsersController {
   @Roles('super_admin', 'admin')
   revokeInvite(@Param('id') id: string) {
     return this.usersService.revokeInvite(id);
+  }
+
+  // Test endpoint to verify email sending
+  @Post('test-email')
+  @UseGuards(RolesGuard)
+  @Roles('super_admin', 'admin')
+  testEmail(@Body() body: { email: string }) {
+    return this.usersService.testEmail(body.email);
   }
 }

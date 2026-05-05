@@ -2,17 +2,21 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
+// Project root is parent of scripts/
+const projectRoot = path.join(__dirname, '..');
+
 // Find drizzle-kit bin.cjs — works for both npm and pnpm
 function findDrizzleKit() {
   const candidates = [
     // pnpm
-    path.join(__dirname, 'node_modules/.pnpm'),
+    path.join(projectRoot, 'node_modules/.pnpm'),
     // npm / yarn
-    path.join(__dirname, 'node_modules/drizzle-kit'),
+    path.join(projectRoot, 'node_modules/drizzle-kit'),
   ];
 
   // pnpm nested path
-  const pnpmBase = path.join(__dirname, 'node_modules/.pnpm');
+  const pnpmBase = path.join(projectRoot, 'node_modules/.pnpm');
+
   if (fs.existsSync(pnpmBase)) {
     const dirs = fs.readdirSync(pnpmBase);
     const dkDir = dirs.find((d) => d.startsWith('drizzle-kit@'));
@@ -22,8 +26,9 @@ function findDrizzleKit() {
   }
 
   // npm
-  const npmPath = path.join(__dirname, 'node_modules/drizzle-kit/bin.cjs');
+  const npmPath = path.join(projectRoot, 'node_modules/drizzle-kit/bin.cjs');
   if (fs.existsSync(npmPath)) return npmPath;
+
 
   return null;
 }
@@ -41,21 +46,35 @@ if (!fs.existsSync(filePath)) {
 }
 
 let content = fs.readFileSync(filePath, 'utf8');
+let patched = false;
 
-const BROKEN = 'const onUpdate = fk4.update_rule.toLowerCase();';
-const FIXED   = 'const onUpdate = (fk4.update_rule ?? "no action").toLowerCase();';
+const fixes = [
+  {
+    broken: 'const onUpdate = fk4.update_rule.toLowerCase();',
+    fixed:  'const onUpdate = (fk4.update_rule ?? "no action").toLowerCase();'
+  },
+  {
+    broken: 'const onDelete = fk4.delete_rule.toLowerCase();',
+    fixed:  'const onDelete = (fk4.delete_rule ?? "no action").toLowerCase();'
+  },
+  {
+    broken: 'const columnDefaultAsString = column7.column_default.toString();',
+    fixed:  'const columnDefaultAsString = (column7.column_default ?? "").toString();'
+  }
+];
 
-if (content.includes(FIXED)) {
-  console.log('✅ Already patched. Nothing to do.');
-  process.exit(0);
+
+fixes.forEach(f => {
+  if (content.includes(f.broken)) {
+    content = content.replace(f.broken, f.fixed);
+    patched = true;
+  }
+});
+
+if (patched) {
+  fs.writeFileSync(filePath, content, 'utf8');
+  console.log('✅ Patched drizzle-kit successfully:', filePath);
+} else {
+  console.log('✅ Drizzle-kit already patched or target lines not found.');
 }
 
-if (!content.includes(BROKEN)) {
-  console.error('❌ Could not find the target line. drizzle-kit version may have changed.');
-  console.error('   Look for: ' + BROKEN);
-  process.exit(0);
-}
-
-content = content.replace(BROKEN, FIXED);
-fs.writeFileSync(filePath, content, 'utf8');
-console.log('✅ Patched drizzle-kit successfully:', filePath);

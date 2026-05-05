@@ -59,28 +59,35 @@ export class MailService {
   }
 
   async sendInvite(email: string, token: string) {
+    this.logger.log(`🔄 Attempting to send invite email to ${email}`);
     const link = `${this.frontendUrl}/invite?token=${token}`;
-    await this.send(
-      email,
-      'You have been invited to Atyant Ops',
-      `
-      <div style="font-family: 'DM Sans', sans-serif; max-width: 520px; margin: 0 auto; padding: 40px 24px; background: #ffffff;">
-        <div style="margin-bottom: 32px;">
-          <span style="font-size: 22px; font-weight: 800; color: #6965BC; letter-spacing: -0.5px;">Atyant Ops</span>
+    try {
+      await this.send(
+        email,
+        'You have been invited to Atyant Ops',
+        `
+        <div style="font-family: 'DM Sans', sans-serif; max-width: 520px; margin: 0 auto; padding: 40px 24px; background: #ffffff;">
+          <div style="margin-bottom: 32px;">
+            <span style="font-size: 22px; font-weight: 800; color: #6965BC; letter-spacing: -0.5px;">Atyant Ops</span>
+          </div>
+          <h2 style="font-size: 20px; font-weight: 700; color: #0F0E1A; margin: 0 0 12px;">You have been invited</h2>
+          <p style="color: #4B4869; font-size: 15px; line-height: 1.6; margin: 0 0 28px;">
+            You have been invited to join the Atyant Ops internal platform. Click below to set up your account.
+          </p>
+          <a href="${link}" style="display: inline-block; background: #6965BC; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 15px;">
+            Accept Invite
+          </a>
+          <p style="color: #9896B8; font-size: 13px; margin-top: 28px;">
+            This invite expires in 7 days. If you did not expect this email, ignore it safely.
+          </p>
         </div>
-        <h2 style="font-size: 20px; font-weight: 700; color: #0F0E1A; margin: 0 0 12px;">You have been invited</h2>
-        <p style="color: #4B4869; font-size: 15px; line-height: 1.6; margin: 0 0 28px;">
-          You have been invited to join the Atyant Ops internal platform. Click below to set up your account.
-        </p>
-        <a href="${link}" style="display: inline-block; background: #6965BC; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 15px;">
-          Accept Invite
-        </a>
-        <p style="color: #9896B8; font-size: 13px; margin-top: 28px;">
-          This invite expires in 7 days. If you did not expect this email, ignore it safely.
-        </p>
-      </div>
-      `,
-    );
+        `,
+      );
+      this.logger.log(`✅ Invite email successfully sent to ${email}`);
+    } catch (error) {
+      this.logger.error(`❌ Failed to send invite to ${email}:`, error.message);
+      throw error;
+    }
   }
 
   async sendAccountDeactivated(email: string, name: string) {

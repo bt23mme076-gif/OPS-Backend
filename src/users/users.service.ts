@@ -56,6 +56,8 @@ export class UsersService {
   }
 
   async inviteUser(dto: InviteUserDto, invitedBy: string) {
+    console.log('🔵 inviteUser called with:', { email: dto.email, role: dto.role, invitedBy });
+    
     // Check existing user
     const [existing] = await this.db
       .select()
@@ -63,7 +65,10 @@ export class UsersService {
       .where(eq(users.email, dto.email.toLowerCase()))
       .limit(1);
 
-    if (existing) throw new ConflictException('User with this email already exists');
+    if (existing) {
+      console.log('❌ User already exists:', dto.email);
+      throw new ConflictException('User with this email already exists');
+    }
 
     // Check existing pending invite
     const [existingInvite] = await this.db
@@ -73,6 +78,7 @@ export class UsersService {
       .limit(1);
 
     if (existingInvite) {
+      console.log('🔄 Resending invite to:', dto.email);
       // Resend — update token and expiry
       const token = uuidv4();
       const expiresAt = addDays(new Date(), 7).toISOString();
@@ -81,10 +87,13 @@ export class UsersService {
         .set({ token, expiresAt })
         .where(eq(invites.id, existingInvite.id));
 
+      console.log('📧 Calling mailService.sendInvite...');
       await this.mailService.sendInvite(dto.email, token);
+      console.log('✅ Invite resent successfully');
       return { message: 'Invite resent successfully' };
     }
 
+    console.log('📝 Creating new invite for:', dto.email);
     const token = uuidv4();
     const expiresAt = addDays(new Date(), 7).toISOString();
 
@@ -96,7 +105,9 @@ export class UsersService {
       invitedBy,
     });
 
+    console.log('📧 Calling mailService.sendInvite...');
     await this.mailService.sendInvite(dto.email, token);
+    console.log('✅ Invite sent successfully');
     return { message: 'Invite sent successfully' };
   }
 
@@ -187,5 +198,18 @@ export class UsersService {
       .where(eq(invites.id, inviteId));
 
     return { message: 'Invite revoked' };
+  }
+
+  async testEmail(email: string) {
+    try {
+      await this.mailService.sendInvite(email, 'test-token-12345');
+      return { success: true, message: `Test email sent to ${email}` };
+    } catch (error) {
+      return { 
+        success: false, 
+        message: 'Failed to send email', 
+        error: error.message 
+      };
+    }
   }
 }

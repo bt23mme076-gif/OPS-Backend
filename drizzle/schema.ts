@@ -14,13 +14,69 @@ import { relations, sql } from 'drizzle-orm';
 
 // ─── ENUMS ────────────────────────────────────────────────────────────────────
 
-export const userRoleEnum = pgEnum('user_role', [
-  'super_admin',
-  'admin',
-  'sales',
-  'content',
-  'outreach',
-  'viewer',
+export const userRoleEnum = pgEnum('user_role', ['SUPER_ADMIN', 'MANAGER', 'INTERN']);
+
+export const squadEnum = pgEnum('squad', [
+  'TECH',
+  'OUTREACH',
+  'CONTENT',
+  'PRODUCT',
+  'HR_DESIGN',
+]);
+
+export const userStatusEnum = pgEnum('user_status', [
+  'ACTIVE',
+  'INACTIVE',
+  'PROBATION',
+  'ALUMNI',
+]);
+
+export const priorityEnum = pgEnum('priority', [
+  'LOW',
+  'MEDIUM',
+  'HIGH',
+  'URGENT',
+]);
+
+export const taskStatusEnum = pgEnum('task_status', [
+  'TODO',
+  'IN_PROGRESS',
+  'REVIEW',
+  'DONE',
+  'BLOCKED',
+]);
+
+export const outreachTypeEnum = pgEnum('outreach_type', ['MENTOR', 'STUDENT']);
+
+export const channelEnum = pgEnum('channel', [
+  'WHATSAPP',
+  'LINKEDIN',
+  'INSTAGRAM',
+  'EMAIL',
+]);
+
+export const outreachStatusEnum = pgEnum('outreach_status', [
+  'NOT_CONTACTED',
+  'CONTACTED',
+  'INTERESTED',
+  'SIGNED_UP',
+  'REJECTED',
+]);
+
+export const contentTypeEnum = pgEnum('content_type', [
+  'LINKEDIN_POST',
+  'INSTAGRAM_REEL',
+  'BLOG',
+  'CAROUSEL',
+  'VIDEO',
+]);
+
+export const contentStatusEnum = pgEnum('content_status', [
+  'DRAFT',
+  'REVIEW',
+  'APPROVED',
+  'PUBLISHED',
+  'REJECTED',
 ]);
 
 export const inviteStatusEnum = pgEnum('invite_status', [
@@ -28,8 +84,6 @@ export const inviteStatusEnum = pgEnum('invite_status', [
   'accepted',
   'expired',
 ]);
-
-export const userStatusEnum = pgEnum('user_status', ['active', 'deactivated']);
 
 export const mentorStageEnum = pgEnum('mentor_stage', [
   'identified',
@@ -170,15 +224,22 @@ export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: varchar('name', { length: 255 }).notNull(),
   email: varchar('email', { length: 255 }).notNull().unique(),
+  phone: varchar('phone', { length: 20 }),
   passwordHash: text('password_hash').notNull(),
-  role: userRoleEnum('role').notNull().default('viewer'),
-  status: userStatusEnum('status').notNull().default('active'),
+  role: userRoleEnum('role').notNull().default('INTERN'),
+  squad: squadEnum('squad'),
+  college: varchar('college', { length: 255 }),
+  yearOfStudy: integer('year_of_study'),
+  status: userStatusEnum('status').notNull().default('ACTIVE'),
+  lorEligible: boolean('lor_eligible').notNull().default(false),
+  managerId: uuid('manager_id').references(() => users.id),
   avatarUrl: text('avatar_url'),
   invitedBy: uuid('invited_by').references(() => users.id),
-  joinedAt: timestamp('joined_at', { mode: 'string' }),
+  joinedAt: timestamp('joined_at', { mode: 'string' }).defaultNow(),
   createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { mode: 'string' }).defaultNow().notNull(),
 });
+
 
 export const userPermissions = pgTable('user_permissions', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -216,6 +277,7 @@ export const mentors = pgTable('mentors', {
   currentCompany: varchar('current_company', { length: 255 }),
   currentRole: varchar('current_role', { length: 255 }),
   domain: mentorDomainEnum('domain'),
+  squad: squadEnum('squad'),
   collegeName: varchar('college_name', { length: 255 }),
   collegeTier: collegeTierEnum('college_tier'),
   graduationYear: integer('graduation_year'),
@@ -252,6 +314,7 @@ export const students = pgTable('students', {
   cgpa: real('cgpa'),
   targetRole: varchar('target_role', { length: 255 }),
   targetDomain: mentorDomainEnum('target_domain'),
+  squad: squadEnum('squad'),
   source: sourceEnum('source'),
   stage: studentStageEnum('stage').notNull().default('signed_up'),
   placementStatus: placementStatusEnum('placement_status')
@@ -273,6 +336,7 @@ export const students = pgTable('students', {
   createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { mode: 'string' }).defaultNow().notNull(),
 });
+
 
 // ─── PIPELINE ACTIVITY LOG ────────────────────────────────────────────────────
 
@@ -405,6 +469,77 @@ export const answerCards = pgTable('answer_cards', {
   updatedAt: timestamp('updated_at', { mode: 'string' }).defaultNow().notNull(),
 });
 
+// ─── INTERNAL OPS (TASKS, PERFORMANCE, OUTREACH) ───────────────────────────
+
+export const tasks = pgTable('tasks', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  title: varchar('title', { length: 255 }).notNull(),
+  description: text('description'),
+  squad: squadEnum('squad').notNull(),
+  assignedById: uuid('assigned_by_id')
+    .notNull()
+    .references(() => users.id),
+  assignedToId: uuid('assigned_to_id')
+    .notNull()
+    .references(() => users.id),
+  priority: priorityEnum('priority').notNull().default('MEDIUM'),
+  status: taskStatusEnum('status').notNull().default('TODO'),
+  dueDate: timestamp('due_date', { mode: 'string' }).notNull(),
+  proofLink: text('proof_link'),
+  feedback: text('feedback'),
+  points: integer('points').notNull().default(5),
+  createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { mode: 'string' }).defaultNow().notNull(),
+});
+
+export const performance = pgTable('performance', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  internId: uuid('intern_id')
+    .notNull()
+    .references(() => users.id),
+  month: integer('month').notNull(),
+  year: integer('year').notNull(),
+  tasksAssigned: integer('tasks_assigned').notNull().default(0),
+  tasksCompleted: integer('tasks_completed').notNull().default(0),
+  tasksMissed: integer('tasks_missed').notNull().default(0),
+  managerRating: real('manager_rating'),
+  totalScore: real('total_score'),
+  lorScore: real('lor_score'),
+  createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
+});
+
+export const outreachContacts = pgTable('outreach_contacts', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  type: outreachTypeEnum('type').notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
+  college: varchar('college', { length: 255 }),
+  linkedinUrl: text('linkedin_url'),
+  contactedById: uuid('contacted_by_id')
+    .notNull()
+    .references(() => users.id),
+  channel: channelEnum('channel').notNull(),
+  status: outreachStatusEnum('status').notNull().default('NOT_CONTACTED'),
+  followupDate: timestamp('followup_date', { mode: 'string' }),
+  notes: text('notes'),
+  createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { mode: 'string' }).defaultNow().notNull(),
+});
+
+export const contentPieces = pgTable('content_pieces', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  title: varchar('title', { length: 255 }).notNull(),
+  type: contentTypeEnum('type').notNull(),
+  assignedToId: uuid('assigned_to_id')
+    .notNull()
+    .references(() => users.id),
+  status: contentStatusEnum('status').notNull().default('DRAFT'),
+  platform: varchar('platform', { length: 100 }),
+  publishedUrl: text('published_url'),
+  dueDate: timestamp('due_date', { mode: 'string' }).notNull(),
+  createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { mode: 'string' }).defaultNow().notNull(),
+});
+
 // ─── NOTIFICATIONS ────────────────────────────────────────────────────────────
 
 export const notifications = pgTable('notifications', {
@@ -420,6 +555,7 @@ export const notifications = pgTable('notifications', {
   createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
 });
 
+
 // ─── RELATIONS ────────────────────────────────────────────────────────────────
 
 export const usersRelations = relations(users, ({ many, one }) => ({
@@ -429,8 +565,53 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   studentsAssigned: many(students, { relationName: 'assignedTo' }),
   studentsCreated: many(students, { relationName: 'createdBy' }),
   notifications: many(notifications),
+  manager: one(users, {
+    fields: [users.managerId],
+    references: [users.id],
+    relationName: 'manager',
+  }),
+  interns: many(users, { relationName: 'manager' }),
+  tasksAssigned: many(tasks, { relationName: 'assignedBy' }),
+  tasksReceived: many(tasks, { relationName: 'assignedTo' }),
+  performance: many(performance),
+  outreachLogs: many(outreachContacts),
+  contentPieces: many(contentPieces),
   invitedBy: one(users, {
     fields: [users.invitedBy],
+    references: [users.id],
+  }),
+}));
+
+export const tasksRelations = relations(tasks, ({ one }) => ({
+  assignedBy: one(users, {
+    fields: [tasks.assignedById],
+    references: [users.id],
+    relationName: 'assignedBy',
+  }),
+  assignedTo: one(users, {
+    fields: [tasks.assignedToId],
+    references: [users.id],
+    relationName: 'assignedTo',
+  }),
+}));
+
+export const performanceRelations = relations(performance, ({ one }) => ({
+  intern: one(users, {
+    fields: [performance.internId],
+    references: [users.id],
+  }),
+}));
+
+export const outreachContactsRelations = relations(outreachContacts, ({ one }) => ({
+  contactedBy: one(users, {
+    fields: [outreachContacts.contactedById],
+    references: [users.id],
+  }),
+}));
+
+export const contentPiecesRelations = relations(contentPieces, ({ one }) => ({
+  assignedTo: one(users, {
+    fields: [contentPieces.assignedToId],
     references: [users.id],
   }),
 }));
@@ -480,3 +661,4 @@ export const sessionsRelations = relations(sessions, ({ one }) => ({
     references: [answerCards.sessionId],
   }),
 }));
+
