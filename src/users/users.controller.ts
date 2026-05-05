@@ -17,74 +17,48 @@ import { UpdatePermissionsDto } from './dto/update-permissions.dto';
 export class UsersController {
   constructor(private usersService: UsersService) {}
 
-  // GET /users — any authenticated user can list team members
-  // (needed for assign-to dropdowns in frontend)
   @Get()
-  getAllUsers() {
-    return this.usersService.getAllUsers();
+  getAllUsers(@CurrentUser() user: any) {
+    return this.usersService.getUsersForRole(user);
   }
 
   @Get('invites')
   @UseGuards(RolesGuard)
-  @Roles('super_admin', 'admin')
+  @Roles('SUPER_ADMIN')
   getPendingInvites() {
     return this.usersService.getPendingInvites();
   }
 
   @Get(':id')
-  getUserById(@Param('id') id: string) {
+  async getUserById(@Param('id') id: string, @CurrentUser() user: any) {
+    // Basic protection: interns can only see themselves unless special permission
+    if (user.role === 'INTERN' && user.id !== id) {
+       throw new ForbiddenException('You can only view your own profile');
+    }
     return this.usersService.getUserById(id);
   }
 
   @Post('invite')
   @UseGuards(RolesGuard)
-  @Roles('super_admin', 'admin')
+  @Roles('SUPER_ADMIN')
   async inviteUser(@Body() dto: InviteUserDto, @CurrentUser() user: any) {
-    console.log('🟢 POST /users/invite called by:', user?.email || user?.id);
-    console.log('🟢 Request body:', dto);
-    try {
-      const result = await this.usersService.inviteUser(dto, user.id);
-      console.log('🟢 Response:', result);
-      return result;
-    } catch (error) {
-      console.log('🔴 Error in inviteUser:', error.message);
-      throw error;
-    }
+    return this.usersService.inviteUser(dto, user.id);
   }
 
-  @Patch(':id/deactivate')
+  @Patch(':id')
   @UseGuards(RolesGuard)
-  @Roles('super_admin', 'admin')
-  deactivateUser(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.usersService.deactivateUser(id, user.id);
+  @Roles('SUPER_ADMIN', 'MANAGER')
+  updateUser(@Param('id') id: string, @Body() dto: any, @CurrentUser() user: any) {
+    // Managers can only update users in their squad (e.g. status)
+    // But Super Admin can update everything
+    return this.usersService.updateUser(id, dto, user);
   }
 
-  @Patch(':id/reactivate')
+  @Delete(':id')
   @UseGuards(RolesGuard)
-  @Roles('super_admin', 'admin')
-  reactivateUser(@Param('id') id: string) {
-    return this.usersService.reactivateUser(id);
+  @Roles('SUPER_ADMIN')
+  deleteUser(@Param('id') id: string) {
+    return this.usersService.deleteUser(id);
   }
 
-  @Patch(':id/permissions')
-  @UseGuards(RolesGuard)
-  @Roles('super_admin', 'admin')
-  updatePermissions(@Param('id') id: string, @Body() dto: UpdatePermissionsDto) {
-    return this.usersService.updatePermissions(id, dto);
-  }
-
-  @Delete('invites/:id')
-  @UseGuards(RolesGuard)
-  @Roles('super_admin', 'admin')
-  revokeInvite(@Param('id') id: string) {
-    return this.usersService.revokeInvite(id);
-  }
-
-  // Test endpoint to verify email sending
-  @Post('test-email')
-  @UseGuards(RolesGuard)
-  @Roles('super_admin', 'admin')
-  testEmail(@Body() body: { email: string }) {
-    return this.usersService.testEmail(body.email);
-  }
 }

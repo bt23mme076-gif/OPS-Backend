@@ -6,7 +6,9 @@ export class CreateTaskDto {
   @IsOptional() @IsString() status?: string;
   @IsOptional() @IsString() priority?: string;
   @IsOptional() @IsString() assignedToId?: string;
-  @IsOptional() @IsString() dueAt?: string;     // frontend sends dueAt
+  @IsOptional() @IsString() dueAt?: string;
+  @IsOptional() @IsString() squad?: string;
   @IsOptional() @IsString() mentorId?: string;
+
   @IsOptional() @IsString() studentId?: string;
 }

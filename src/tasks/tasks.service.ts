@@ -1,129 +1,125 @@
-import { Injectable, Inject, NotFoundException } from '@nestjs/common';
-import { sql } from 'drizzle-orm';
+import { Injectable, Inject, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { eq, and, or, sql, desc } from 'drizzle-orm';
 import { DB } from '../database/database.module';
+import { tasks, users } from '../../drizzle/schema';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
-
-// Maps DB snake_case columns → frontend camelCase shape
-function toFrontend(t: any) {
-  if (!t) return t;
-  return {
-    id:          t.id,
-    title:       t.title,
-    description: t.description,
-    status:      t.status,
-    priority:    t.priority,
-    dueAt:       t.due_date,          // due_date → dueAt
-    completedAt: t.completed_at,
-    assignedToId: t.assigned_to,
-    assignedTo:  t.assigned_to_name ? {
-      id:        t.assigned_to,
-      name:      t.assigned_to_name,
-      avatarUrl: t.assigned_to_avatar,
-    } : null,
-    createdById: t.created_by,
-    createdAt:   t.created_at,
-    updatedAt:   t.updated_at,
-  };
-}
 
 @Injectable()
 export class TasksService {
   constructor(@Inject(DB) private db: any) {}
 
-  async findAll(query?: { status?: string; assignedTo?: string }) {
-    let where = 'WHERE 1=1';
-    if (query?.status)     where += ` AND t.status = '${query.status}'`;
-    if (query?.assignedTo) where += ` AND t.assigned_to = '${query.assignedTo}'`;
+  async getTasksForRole(user: any) {
+    let query = this.db
+      .select({
+        id:          tasks.id,
+        title:       tasks.title,
+        description: tasks.description,
+        status:      tasks.status,
+        priority:    tasks.priority,
+        squad:       tasks.squad,
+        dueDate:     tasks.dueDate,
+        proofLink:   tasks.proofLink,
+        feedback:    tasks.feedback,
+        createdAt:   tasks.createdAt,
+        assignedTo: {
+          id:   users.id,
+          name: users.name,
+        }
+      })
+      .from(tasks)
+      .leftJoin(users, eq(tasks.assignedToId, users.id));
 
-    const result = await this.db.execute(sql`
-      SELECT t.*,
-        u.name as assigned_to_name,
-        u.avatar_url as assigned_to_avatar
-      FROM tasks t
-      LEFT JOIN users u ON t.assigned_to = u.id
-      ORDER BY
-        CASE t.priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END,
-        t.created_at DESC
-    `);
+    if (user.viewMode === 'mine' || user.role === 'INTERN') {
+      query = query.where(eq(tasks.assignedToId, user.id));
+    } else if (user.role === 'MANAGER') {
+      query = query.where(eq(tasks.squad, user.squad));
+    }
+    // SUPER_ADMIN sees all
 
-    const rows = result.rows ?? result;
-    const filtered = rows.filter((r: any) => {
-      if (query?.status && r.status !== query.status) return false;
-      if (query?.assignedTo && r.assigned_to !== query.assignedTo) return false;
-      return true;
-    });
-
-    return filtered.map(toFrontend);
-  }
-
-  async getMyTasks(userId: string) {
-    const result = await this.db.execute(sql`
-      SELECT t.*,
-        u.name as assigned_to_name,
-        u.avatar_url as assigned_to_avatar
-      FROM tasks t
-      LEFT JOIN users u ON t.assigned_to = u.id
-      WHERE t.assigned_to = ${userId}
-      ORDER BY t.created_at DESC
-    `);
-    const rows = result.rows ?? result;
-    return rows.map(toFrontend);
+    return query.orderBy(desc(tasks.createdAt));
   }
 
   async findOne(id: string) {
-    const result = await this.db.execute(sql`
-      SELECT t.*, u.name as assigned_to_name, u.avatar_url as assigned_to_avatar
-      FROM tasks t
-      LEFT JOIN users u ON t.assigned_to = u.id
-      WHERE t.id = ${id}
-      LIMIT 1
-    `);
-    const rows = result.rows ?? result;
-    if (!rows.length) throw new NotFoundException('Task not found');
-    return toFrontend(rows[0]);
+    const [task] = await this.db.select().from(tasks).where(eq(tasks.id, id)).limit(1);
+    if (!task) throw new NotFoundException('Task not found');
+    return task;
   }
 
-  async create(dto: CreateTaskDto, createdBy: string) {
-    const result = await this.db.execute(sql`
-      INSERT INTO tasks (title, description, status, priority, assigned_to, created_by, due_date)
-      VALUES (
-        ${dto.title},
-        ${dto.description ?? null},
-        ${dto.status ?? 'todo'},
-        ${dto.priority ?? 'medium'},
-        ${dto.assignedToId ?? null},
-        ${createdBy},
-        ${dto.dueAt ? new Date(dto.dueAt).toISOString() : null}
-      )
-      RETURNING *
-    `);
-    const rows = result.rows ?? result;
-    return toFrontend(rows[0]);
+  async create(dto: any, user: any) {
+    if (user.role === 'MANAGER') {
+       dto.squad = user.squad;
+    }
+
+    const [task] = await this.db.insert(tasks).values({
+      ...dto,
+      assignedById: user.id,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }).returning();
+
+    return task;
   }
 
-  async update(id: string, dto: UpdateTaskDto, updatedBy: string) {
-    const sets: string[] = ['updated_at = now()'];
-    if (dto.title !== undefined)       sets.push(`title = '${dto.title}'`);
-    if (dto.description !== undefined) sets.push(`description = ${dto.description ? `'${dto.description}'` : 'NULL'}`);
-    if (dto.status !== undefined)      sets.push(`status = '${dto.status}'`);
-    if (dto.priority !== undefined)    sets.push(`priority = '${dto.priority}'`);
-    if (dto.assignedToId !== undefined) sets.push(`assigned_to = ${dto.assignedToId ? `'${dto.assignedToId}'` : 'NULL'}`);
-    if (dto.dueAt !== undefined)       sets.push(`due_date = ${dto.dueAt ? `'${dto.dueAt}'` : 'NULL'}`);
-    if (dto.status === 'done')         sets.push(`completed_at = now()`);
+  async update(id: string, dto: any, user: any) {
+    const [task] = await this.db.select().from(tasks).where(eq(tasks.id, id)).limit(1);
+    if (!task) throw new NotFoundException('Task not found');
 
-    const result = await this.db.execute(sql`
-      UPDATE tasks SET ${sql.raw(sets.join(', '))}
-      WHERE id = ${id}
-      RETURNING *
-    `);
-    const rows = result.rows ?? result;
-    if (!rows.length) throw new NotFoundException('Task not found');
-    return toFrontend(rows[0]);
+    if (user.role === 'MANAGER' && task.squad !== user.squad) {
+       throw new ForbiddenException('You can only update tasks in your squad');
+    }
+
+    if (user.role === 'INTERN' && task.assignedToId !== user.id) {
+       throw new ForbiddenException('You can only update your own tasks');
+    }
+
+    const [updated] = await this.db
+      .update(tasks)
+      .set({ ...dto, updatedAt: new Date().toISOString() })
+      .where(eq(tasks.id, id))
+      .returning();
+
+    return updated;
+  }
+
+  async approve(id: string, user: any) {
+    if (user.role === 'INTERN') throw new ForbiddenException();
+
+    const [task] = await this.db.select().from(tasks).where(eq(tasks.id, id)).limit(1);
+    if (!task) throw new NotFoundException();
+
+    if (user.role === 'MANAGER' && task.squad !== user.squad) throw new ForbiddenException();
+
+    const [updated] = await this.db
+      .update(tasks)
+      .set({ status: 'DONE', completedAt: new Date().toISOString(), updatedAt: new Date().toISOString() })
+      .where(eq(tasks.id, id))
+      .returning();
+
+    return updated;
+  }
+
+  async addFeedback(id: string, feedback: string, user: any) {
+    if (user.role === 'INTERN') throw new ForbiddenException();
+
+    const [task] = await this.db.select().from(tasks).where(eq(tasks.id, id)).limit(1);
+    if (!task) throw new NotFoundException();
+
+    if (user.role === 'MANAGER' && task.squad !== user.squad) throw new ForbiddenException();
+
+    const [updated] = await this.db
+      .update(tasks)
+      .set({ feedback, updatedAt: new Date().toISOString() })
+      .where(eq(tasks.id, id))
+      .returning();
+
+    return updated;
   }
 
   async delete(id: string) {
-    await this.db.execute(sql`DELETE FROM tasks WHERE id = ${id}`);
+    await this.db.delete(tasks).where(eq(tasks.id, id));
     return { success: true };
   }
+}
+
 }

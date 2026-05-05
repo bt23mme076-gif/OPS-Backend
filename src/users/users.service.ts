@@ -21,20 +21,31 @@ export class UsersService {
     private mailService: MailService,
   ) {}
 
-  async getAllUsers() {
-    return this.db
+  async getUsersForRole(user: any) {
+    let query = this.db
       .select({
         id: users.id,
         name: users.name,
         email: users.email,
         role: users.role,
+        squad: users.squad,
         status: users.status,
         avatarUrl: users.avatarUrl,
         joinedAt: users.joinedAt,
         createdAt: users.createdAt,
       })
-      .from(users)
-      .orderBy(users.createdAt);
+      .from(users);
+
+    if (user.role === 'MANAGER') {
+      // Managers only see their own squad interns
+      query = query.where(and(eq(users.squad, user.squad), eq(users.role, 'INTERN')));
+    } else if (user.role === 'INTERN') {
+      // Interns only see themselves
+      query = query.where(eq(users.id, user.id));
+    }
+    // SUPER_ADMIN sees all
+
+    return query.orderBy(users.createdAt);
   }
 
   async getUserById(id: string) {
@@ -46,141 +57,71 @@ export class UsersService {
 
     if (!user) throw new NotFoundException('User not found');
 
-    const permissions = await this.db
-      .select()
-      .from(userPermissions)
-      .where(eq(userPermissions.userId, id));
-
     const { passwordHash, ...safeUser } = user;
-    return { ...safeUser, permissions };
+    return safeUser;
   }
 
   async inviteUser(dto: InviteUserDto, invitedBy: string) {
-    console.log('🔵 inviteUser called with:', { email: dto.email, role: dto.role, invitedBy });
-    
-    // Check existing user
     const [existing] = await this.db
       .select()
       .from(users)
       .where(eq(users.email, dto.email.toLowerCase()))
       .limit(1);
 
-    if (existing) {
-      console.log('❌ User already exists:', dto.email);
-      throw new ConflictException('User with this email already exists');
-    }
+    if (existing) throw new ConflictException('User already exists');
 
-    // Check existing pending invite
     const [existingInvite] = await this.db
       .select()
       .from(invites)
       .where(and(eq(invites.email, dto.email.toLowerCase()), eq(invites.status, 'pending')))
       .limit(1);
 
-    if (existingInvite) {
-      console.log('🔄 Resending invite to:', dto.email);
-      // Resend — update token and expiry
-      const token = uuidv4();
-      const expiresAt = addDays(new Date(), 7).toISOString();
-      await this.db
-        .update(invites)
-        .set({ token, expiresAt })
-        .where(eq(invites.id, existingInvite.id));
-
-      console.log('📧 Calling mailService.sendInvite...');
-      await this.mailService.sendInvite(dto.email, token);
-      console.log('✅ Invite resent successfully');
-      return { message: 'Invite resent successfully' };
-    }
-
-    console.log('📝 Creating new invite for:', dto.email);
     const token = uuidv4();
     const expiresAt = addDays(new Date(), 7).toISOString();
 
-    await this.db.insert(invites).values({
-      email: dto.email.toLowerCase(),
-      role: dto.role,
-      token,
-      expiresAt,
-      invitedBy,
-    });
-
-    console.log('📧 Calling mailService.sendInvite...');
-    await this.mailService.sendInvite(dto.email, token);
-    console.log('✅ Invite sent successfully');
-    return { message: 'Invite sent successfully' };
-  }
-
-  async deactivateUser(targetId: string, requesterId: string) {
-    if (targetId === requesterId)
-      throw new ForbiddenException('You cannot deactivate your own account');
-
-    const [target] = await this.db
-      .select()
-      .from(users)
-      .where(eq(users.id, targetId))
-      .limit(1);
-
-    if (!target) throw new NotFoundException('User not found');
-    if (target.role === 'super_admin')
-      throw new ForbiddenException('Super admin accounts cannot be deactivated');
-
-    await this.db
-      .update(users)
-      .set({ status: 'deactivated', updatedAt: new Date().toISOString() })
-      .where(eq(users.id, targetId));
-
-    // Send critical email notification
-    await this.mailService.sendAccountDeactivated(target.email, target.name);
-
-    // In-app notification
-    await this.db.insert(notifications).values({
-      userId: targetId,
-      type: 'account_deactivated',
-      title: 'Account Deactivated',
-      message: 'Your account has been deactivated. Contact your admin for access.',
-      metadata: { deactivatedBy: requesterId },
-      createdAt: new Date().toISOString(),
-    });
-
-    return { message: 'User deactivated successfully' };
-  }
-
-  async reactivateUser(targetId: string) {
-    await this.db
-      .update(users)
-      .set({ status: 'active', updatedAt: new Date().toISOString() })
-      .where(eq(users.id, targetId));
-
-    return { message: 'User reactivated successfully' };
-  }
-
-  async updatePermissions(userId: string, dto: UpdatePermissionsDto) {
-    const [user] = await this.db
-      .select()
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1);
-
-    if (!user) throw new NotFoundException('User not found');
-
-    // Delete existing permissions and re-insert
-    await this.db
-      .delete(userPermissions)
-      .where(eq(userPermissions.userId, userId));
-
-    if (dto.permissions.length > 0) {
-      await this.db.insert(userPermissions).values(
-        dto.permissions.map((p) => ({
-          userId,
-          module: p.module,
-          canRead: p.canRead,
-          canWrite: p.canWrite,
-        })),
-      );
+    if (existingInvite) {
+      await this.db
+        .update(invites)
+        .set({ token, expiresAt, role: dto.role })
+        .where(eq(invites.id, existingInvite.id));
+    } else {
+      await this.db.insert(invites).values({
+        email: dto.email.toLowerCase(),
+        role: dto.role,
+        token,
+        expiresAt,
+        invitedBy,
+      });
     }
 
-    return { message: 'Permissions updated successfully' };
+    await this.mailService.sendInvite(dto.email, token);
+    return { success: true, message: 'Invite sent' };
+  }
+
+  async updateUser(id: string, dto: any, requester: any) {
+    const [target] = await this.db.select().from(users).where(eq(users.id, id)).limit(1);
+    if (!target) throw new NotFoundException('User not found');
+
+    if (requester.role === 'MANAGER') {
+      if (target.squad !== requester.squad) {
+        throw new ForbiddenException('You can only update users in your own squad');
+      }
+      // Managers can only update status or managerId for interns
+      delete dto.role;
+      delete dto.squad;
+    }
+
+    await this.db
+      .update(users)
+      .set({ ...dto, updatedAt: new Date().toISOString() })
+      .where(eq(users.id, id));
+
+    return { success: true, message: 'User updated' };
+  }
+
+  async deleteUser(id: string) {
+    await this.db.delete(users).where(eq(users.id, id));
+    return { success: true, message: 'User deleted' };
   }
 
   async getPendingInvites() {
@@ -199,17 +140,6 @@ export class UsersService {
 
     return { message: 'Invite revoked' };
   }
+}
 
-  async testEmail(email: string) {
-    try {
-      await this.mailService.sendInvite(email, 'test-token-12345');
-      return { success: true, message: `Test email sent to ${email}` };
-    } catch (error) {
-      return { 
-        success: false, 
-        message: 'Failed to send email', 
-        error: error.message 
-      };
-    }
-  }
 }

@@ -14,16 +14,13 @@ export class TasksController {
   constructor(private tasksService: TasksService) {}
 
   @Get()
-  findAll(
-    @Query('status') status?: string,
-    @Query('assignedTo') assignedTo?: string,
-  ) {
-    return this.tasksService.findAll({ status, assignedTo });
+  findAll(@CurrentUser() user: any) {
+    return this.tasksService.getTasksForRole(user);
   }
 
   @Get('my')
   getMyTasks(@CurrentUser() user: any) {
-    return this.tasksService.getMyTasks(user.id);
+    return this.tasksService.getTasksForRole({ ...user, viewMode: 'mine' });
   }
 
   @Get(':id')
@@ -33,16 +30,27 @@ export class TasksController {
 
   @Post()
   create(@Body() dto: CreateTaskDto, @CurrentUser() user: any) {
-    return this.tasksService.create(dto, user.id);
+    return this.tasksService.create(dto, user);
   }
 
   @Patch(':id')
   update(@Param('id') id: string, @Body() dto: UpdateTaskDto, @CurrentUser() user: any) {
-    return this.tasksService.update(id, dto, user.id);
+    return this.tasksService.update(id, dto, user);
+  }
+
+  @Patch(':id/approve')
+  approve(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.tasksService.approve(id, user);
+  }
+
+  @Patch(':id/feedback')
+  addFeedback(@Param('id') id: string, @Body() body: { feedback: string }, @CurrentUser() user: any) {
+    return this.tasksService.addFeedback(id, body.feedback, user);
   }
 
   @Delete(':id')
   delete(@Param('id') id: string) {
     return this.tasksService.delete(id);
   }
+
 }

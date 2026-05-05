@@ -48,10 +48,11 @@ export class AuthService {
       sub: user.id,
       email: user.email,
       role: user.role,
+      squad: user.squad,
     });
 
     const { passwordHash, ...safeUser } = user;
-    return { token, user: safeUser, permissions };
+    return { token, user: safeUser };
   }
 
   async acceptInvite(dto: AcceptInviteDto) {
@@ -62,7 +63,7 @@ export class AuthService {
         and(
           eq(invites.token, dto.token),
           eq(invites.status, 'pending'),
-          gt(invites.expiresAt, sql`now()`),  // ← fixed
+          gt(invites.expiresAt, sql`now()`),
         ),
       )
       .limit(1);
@@ -87,7 +88,8 @@ export class AuthService {
         email: invite.email,
         passwordHash,
         role: invite.role,
-        status: 'active',
+        squad: (invite as any).squad ?? 'TECH', // Default squad if not in invite
+        status: 'ACTIVE',
         invitedBy: invite.invitedBy,
         joinedAt: new Date().toISOString(),
       })
@@ -102,6 +104,7 @@ export class AuthService {
       sub: newUser.id,
       email: newUser.email,
       role: newUser.role,
+      squad: newUser.squad,
     });
 
     const { passwordHash: _, ...safeUser } = newUser;
@@ -115,8 +118,9 @@ export class AuthService {
       .where(eq(users.id, userId))
       .limit(1);
 
-    if (!user || user.status === 'deactivated') return null;
+    if (!user || user.status === 'INACTIVE') return null;
     const { passwordHash, ...safeUser } = user;
     return safeUser;
   }
+
 }
