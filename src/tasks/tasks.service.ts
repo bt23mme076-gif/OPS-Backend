@@ -121,5 +121,3 @@ export class TasksService {
     return { success: true };
   }
 }
-
-}

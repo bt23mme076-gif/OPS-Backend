@@ -141,5 +141,3 @@ export class UsersService {
     return { message: 'Invite revoked' };
   }
 }
-
-}
