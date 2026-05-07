@@ -5,7 +5,25 @@ EXCEPTION
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
+ CREATE TYPE "public"."channel" AS ENUM('WHATSAPP', 'LINKEDIN', 'INSTAGRAM', 'EMAIL');
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
  CREATE TYPE "public"."college_tier" AS ENUM('iit_iim', 'nit_vnit', 'private_tier1', 'private_tier2', 'other');
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ CREATE TYPE "public"."content_status" AS ENUM('DRAFT', 'REVIEW', 'APPROVED', 'PUBLISHED', 'REJECTED');
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ CREATE TYPE "public"."content_type" AS ENUM('LINKEDIN_POST', 'INSTAGRAM_REEL', 'BLOG', 'CAROUSEL', 'VIDEO');
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
@@ -47,7 +65,25 @@ EXCEPTION
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
+ CREATE TYPE "public"."outreach_status" AS ENUM('NOT_CONTACTED', 'CONTACTED', 'INTERESTED', 'SIGNED_UP', 'REJECTED');
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ CREATE TYPE "public"."outreach_type" AS ENUM('MENTOR', 'STUDENT');
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
  CREATE TYPE "public"."placement_status" AS ENUM('not_started', 'in_progress', 'placed', 'rejected', 'dropped');
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ CREATE TYPE "public"."priority" AS ENUM('LOW', 'MEDIUM', 'HIGH', 'URGENT');
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
@@ -89,7 +125,13 @@ EXCEPTION
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
- CREATE TYPE "public"."source" AS ENUM('linkedin', 'whatsapp', 'referral', 'cold_outreach', 'inbound', 'college', 'organic');
+ CREATE TYPE "public"."source" AS ENUM('linkedin', 'whatsapp', 'referral', 'cold_outreach', 'inbound', 'college', 'campus', 'organic');
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ CREATE TYPE "public"."squad" AS ENUM('TECH', 'OUTREACH', 'CONTENT', 'PRODUCT', 'HR_DESIGN');
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
@@ -101,13 +143,19 @@ EXCEPTION
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
- CREATE TYPE "public"."user_role" AS ENUM('super_admin', 'admin', 'sales', 'content', 'outreach', 'viewer');
+ CREATE TYPE "public"."task_status" AS ENUM('TODO', 'IN_PROGRESS', 'REVIEW', 'DONE', 'BLOCKED');
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
- CREATE TYPE "public"."user_status" AS ENUM('active', 'deactivated');
+ CREATE TYPE "public"."user_role" AS ENUM('SUPER_ADMIN', 'MANAGER', 'INTERN');
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ CREATE TYPE "public"."user_status" AS ENUM('ACTIVE', 'INACTIVE', 'PROBATION', 'ALUMNI');
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
@@ -137,10 +185,23 @@ CREATE TABLE IF NOT EXISTS "applications" (
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "content_pieces" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"title" varchar(255) NOT NULL,
+	"type" "content_type" NOT NULL,
+	"assigned_to_id" uuid NOT NULL,
+	"status" "content_status" DEFAULT 'DRAFT' NOT NULL,
+	"platform" varchar(100),
+	"published_url" text,
+	"due_date" timestamp NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "invites" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"email" varchar(255) NOT NULL,
-	"role" "user_role" DEFAULT 'viewer' NOT NULL,
+	"role" "user_role" DEFAULT 'INTERN' NOT NULL,
 	"token" text NOT NULL,
 	"status" "invite_status" DEFAULT 'pending' NOT NULL,
 	"invited_by" uuid NOT NULL,
@@ -159,6 +220,7 @@ CREATE TABLE IF NOT EXISTS "mentors" (
 	"current_company" varchar(255),
 	"current_role" varchar(255),
 	"domain" "mentor_domain",
+	"squad" "squad",
 	"college_name" varchar(255),
 	"college_tier" "college_tier",
 	"graduation_year" integer,
@@ -187,6 +249,35 @@ CREATE TABLE IF NOT EXISTS "notifications" (
 	"message" text NOT NULL,
 	"metadata" jsonb DEFAULT '{}'::jsonb,
 	"is_read" boolean DEFAULT false NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "outreach_contacts" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"type" "outreach_type" NOT NULL,
+	"name" varchar(255) NOT NULL,
+	"college" varchar(255),
+	"linkedin_url" text,
+	"contacted_by_id" uuid NOT NULL,
+	"channel" "channel" NOT NULL,
+	"status" "outreach_status" DEFAULT 'NOT_CONTACTED' NOT NULL,
+	"followup_date" timestamp,
+	"notes" text,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "performance" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"intern_id" uuid NOT NULL,
+	"month" integer NOT NULL,
+	"year" integer NOT NULL,
+	"tasks_assigned" integer DEFAULT 0 NOT NULL,
+	"tasks_completed" integer DEFAULT 0 NOT NULL,
+	"tasks_missed" integer DEFAULT 0 NOT NULL,
+	"manager_rating" real,
+	"total_score" real,
+	"lor_score" real,
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
@@ -266,6 +357,7 @@ CREATE TABLE IF NOT EXISTS "students" (
 	"cgpa" real,
 	"target_role" varchar(255),
 	"target_domain" "mentor_domain",
+	"squad" "squad",
 	"source" "source",
 	"stage" "student_stage" DEFAULT 'signed_up' NOT NULL,
 	"placement_status" "placement_status" DEFAULT 'not_started' NOT NULL,
@@ -278,6 +370,23 @@ CREATE TABLE IF NOT EXISTS "students" (
 	"tags" text[] DEFAULT '{}'::text[],
 	"notes" text,
 	"last_activity_at" timestamp DEFAULT now(),
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "tasks" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"title" varchar(255) NOT NULL,
+	"description" text,
+	"squad" "squad" NOT NULL,
+	"assigned_by_id" uuid NOT NULL,
+	"assigned_to_id" uuid NOT NULL,
+	"priority" "priority" DEFAULT 'MEDIUM' NOT NULL,
+	"status" "task_status" DEFAULT 'TODO' NOT NULL,
+	"due_date" timestamp NOT NULL,
+	"proof_link" text,
+	"feedback" text,
+	"points" integer DEFAULT 5 NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
@@ -295,12 +404,18 @@ CREATE TABLE IF NOT EXISTS "users" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"name" varchar(255) NOT NULL,
 	"email" varchar(255) NOT NULL,
+	"phone" varchar(20),
 	"password_hash" text NOT NULL,
-	"role" "user_role" DEFAULT 'viewer' NOT NULL,
-	"status" "user_status" DEFAULT 'active' NOT NULL,
+	"role" "user_role" DEFAULT 'INTERN' NOT NULL,
+	"squad" "squad",
+	"college" varchar(255),
+	"year_of_study" integer,
+	"status" "user_status" DEFAULT 'ACTIVE' NOT NULL,
+	"lor_eligible" boolean DEFAULT false NOT NULL,
+	"manager_id" uuid,
 	"avatar_url" text,
 	"invited_by" uuid,
-	"joined_at" timestamp,
+	"joined_at" timestamp DEFAULT now(),
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL,
 	CONSTRAINT "users_email_unique" UNIQUE("email")
@@ -331,6 +446,12 @@ EXCEPTION
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
+ ALTER TABLE "content_pieces" ADD CONSTRAINT "content_pieces_assigned_to_id_users_id_fk" FOREIGN KEY ("assigned_to_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
  ALTER TABLE "invites" ADD CONSTRAINT "invites_invited_by_users_id_fk" FOREIGN KEY ("invited_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
@@ -350,6 +471,18 @@ END $$;
 --> statement-breakpoint
 DO $$ BEGIN
  ALTER TABLE "notifications" ADD CONSTRAINT "notifications_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "outreach_contacts" ADD CONSTRAINT "outreach_contacts_contacted_by_id_users_id_fk" FOREIGN KEY ("contacted_by_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "performance" ADD CONSTRAINT "performance_intern_id_users_id_fk" FOREIGN KEY ("intern_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
@@ -427,7 +560,25 @@ EXCEPTION
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
+ ALTER TABLE "tasks" ADD CONSTRAINT "tasks_assigned_by_id_users_id_fk" FOREIGN KEY ("assigned_by_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "tasks" ADD CONSTRAINT "tasks_assigned_to_id_users_id_fk" FOREIGN KEY ("assigned_to_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
  ALTER TABLE "user_permissions" ADD CONSTRAINT "user_permissions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "users" ADD CONSTRAINT "users_manager_id_users_id_fk" FOREIGN KEY ("manager_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
