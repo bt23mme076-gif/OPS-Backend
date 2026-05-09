@@ -18,26 +18,28 @@ export class MailService {
     this.fromEmail = config.get('MAIL_FROM') || 'bt23mme076@students.vnit.ac.in';
     this.frontendUrl = config.get('FRONTEND_URL') || 'https://ops.atyant.in';
 
-    const smtpPort = parseInt(config.get('SMTP_PORT') || '465');
+    const smtpPort = parseInt(config.get('SMTP_PORT') || '587');
+    const isSecure = smtpPort === 465; // 465 = SSL/TLS, 587 = STARTTLS
     
     this.transporter = nodemailer.createTransport({
       host: config.get('SMTP_HOST'),
       port: smtpPort,
-      secure: smtpPort === 465, // true for 465, false for other ports like 587
+      secure: isSecure,
       auth: {
         user: config.get('SMTP_USER'),
         pass: config.get('SMTP_PASS'),
       },
-      logger: true, // Enable logging
-      debug: true, // Include SMTP traffic in logs
+      tls: {
+        rejectUnauthorized: false, // Allow self-signed certs in dev
+      },
     });
 
-    // Verify connection on startup
-    this.transporter.verify((error, success) => {
+    // Verify connection on startup (non-blocking)
+    this.transporter.verify((error) => {
       if (error) {
-        this.logger.error('SMTP connection failed:', error);
+        this.logger.warn(`SMTP connection warning: ${error.message}`);
       } else {
-        this.logger.log('SMTP server is ready to send emails');
+        this.logger.log('✅ SMTP server is ready to send emails');
       }
     });
   }
@@ -53,9 +55,10 @@ export class MailService {
       this.logger.log(`✅ Email sent to ${to}: ${subject} (MessageID: ${info.messageId})`);
       return info;
     } catch (err) {
-      this.logger.error(`❌ Failed to send email to ${to}: ${subject}`, err.stack || err);
-      throw err; // Re-throw so caller knows it failed
+      this.logger.warn(`⚠️ Failed to send email to ${to}: ${err.message}`);
+      throw err;
     }
+
   }
 
   async sendInvite(email: string, token: string) {

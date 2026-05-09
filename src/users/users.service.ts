@@ -94,8 +94,16 @@ export class UsersService {
       });
     }
 
-    await this.mailService.sendInvite(dto.email, token);
+    // Send invite email — non-blocking, invite is saved regardless
+    try {
+      await this.mailService.sendInvite(dto.email, token);
+    } catch (mailErr) {
+      // Log the error but don't fail the request — invite is already in DB
+      console.error(`[InviteUser] Email send failed for ${dto.email}:`, mailErr?.message ?? mailErr);
+    }
+
     return { success: true, message: 'Invite sent' };
+
   }
 
   async updateUser(id: string, dto: any, requester: any) {
