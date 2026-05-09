@@ -7,32 +7,36 @@ import cookieParser = require('cookie-parser')
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  app.setGlobalPrefix('api');
-  app.use(cookieParser());
-
   const allowedOrigins = [
-    process.env.FRONTEND_URL || 'http://localhost:3000',
     'https://ops.atyant.in',
     'https://opsapi.atyant.in',
-    'https://ops-api.atyant.in',
     'http://localhost:3000',
     'http://localhost:3001',
     'http://localhost:3002',
-  ];
+    process.env.FRONTEND_URL,
+  ].filter(Boolean) as string[];
 
+  // CORS must be enabled BEFORE setGlobalPrefix and other middleware
   app.enableCors({
-    // origin: (origin, callback) => {
-    //   if (!origin || allowedOrigins.includes(origin)) {
-    //     callback(null, true);
-    //   } else {
-    //     callback(new Error(`CORS blocked: ${origin}`));
-    //   }
-    // },
-    origin:true,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, curl, Postman, server-to-server)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS blocked: ${origin}`));
+      }
+    },
     credentials: true,
-    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'X-Requested-With', 'Accept'],
+    exposedHeaders: ['Set-Cookie'],
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
   });
+
+  app.setGlobalPrefix('api');
+  app.use(cookieParser());
 
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,
