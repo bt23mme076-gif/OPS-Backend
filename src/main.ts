@@ -1,8 +1,15 @@
+// Polyfill crypto for Node.js < 18 (required by MongoDB driver)
+import { webcrypto } from 'crypto';
+if (!globalThis.crypto) {
+  (globalThis as any).crypto = webcrypto;
+}
+
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module'; 
 import cookieParser = require('cookie-parser')
+
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);

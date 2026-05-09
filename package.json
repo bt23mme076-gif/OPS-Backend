@@ -4,6 +4,9 @@
   "description": "Atyant Ops — NestJS Backend",
   "author": "Nitin Rai",
   "private": true,
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "build": "nest build",
     "start": "node dist/src/main",
