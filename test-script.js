@@ -1,7 +1,8 @@
+require('dotenv').config();
 const jwt = require('jsonwebtoken');
 const postgres = require('postgres');
 
-const sql = postgres("postgresql://postgres.ofcbgevwmziypxixkiiq:123456789nitinrai2266@aws-1-ap-south-1.pooler.supabase.com:6543/postgres");
+const sql = postgres(process.env.DATABASE_URL);
 
 async function run() {
   try {
@@ -14,7 +15,7 @@ async function run() {
     
     const token = jwt.sign(
       { sub: user.id, email: user.email, role: user.role, squad: user.squad },
-      'your-super-secret-jwt-key-change-this-in-production',
+      process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production',
       { expiresIn: '1h' }
     );
 

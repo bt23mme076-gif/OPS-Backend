@@ -37,6 +37,8 @@ out/
 *.db
 *.sqlite
 *.sqlite-journal
+test-api.js
+test-script.js
 
 # Database dumps and logs
 *.sql.gz
