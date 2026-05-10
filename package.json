@@ -11,6 +11,7 @@
     "build": "nest build",
     "start": "node dist/src/main",
     "start:dev": "nest start --watch",
+    "dev": "nest start --watch",
     "start:prod": "node dist/src/main",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",

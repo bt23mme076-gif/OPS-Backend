@@ -492,6 +492,15 @@ export const tasks = pgTable('tasks', {
   updatedAt: timestamp('updated_at', { mode: 'string' }).defaultNow().notNull(),
 });
 
+export const taskActivities = pgTable('task_activities', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  taskId: uuid('task_id').notNull().references(() => tasks.id, { onDelete: 'cascade' }),
+  performedBy: uuid('performed_by').notNull().references(() => users.id),
+  action: varchar('action', { length: 100 }).notNull(),
+  metadata: jsonb('metadata').default({}),
+  createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
+});
+
 export const performance = pgTable('performance', {
   id: uuid('id').primaryKey().defaultRandom(),
   internId: uuid('intern_id')
@@ -582,7 +591,7 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   }),
 }));
 
-export const tasksRelations = relations(tasks, ({ one }) => ({
+export const tasksRelations = relations(tasks, ({ one, many }) => ({
   assignedBy: one(users, {
     fields: [tasks.assignedById],
     references: [users.id],
@@ -592,6 +601,18 @@ export const tasksRelations = relations(tasks, ({ one }) => ({
     fields: [tasks.assignedToId],
     references: [users.id],
     relationName: 'assignedTo',
+  }),
+  activities: many(taskActivities),
+}));
+
+export const taskActivitiesRelations = relations(taskActivities, ({ one }) => ({
+  task: one(tasks, {
+    fields: [taskActivities.taskId],
+    references: [tasks.id],
+  }),
+  performedBy: one(users, {
+    fields: [taskActivities.performedBy],
+    references: [users.id],
   }),
 }));
 

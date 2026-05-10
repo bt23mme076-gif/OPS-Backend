@@ -1,7 +1,7 @@
 import { Injectable, Inject, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { eq, and, or, sql, desc } from 'drizzle-orm';
 import { DB } from '../database/database.module';
-import { tasks, users } from '../../drizzle/schema';
+import { tasks, users, taskActivities } from '../../drizzle/schema';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 
@@ -12,18 +12,9 @@ export class TasksService {
   async getTasksForRole(user: any) {
     let query = this.db
       .select({
-        id:          tasks.id,
-        title:       tasks.title,
-        description: tasks.description,
-        status:      tasks.status,
-        priority:    tasks.priority,
-        squad:       tasks.squad,
-        dueDate:     tasks.dueDate,
-        proofLink:   tasks.proofLink,
-        feedback:    tasks.feedback,
-        createdAt:   tasks.createdAt,
-        assignedTo: {
-          id:   users.id,
+        task: tasks,
+        user: {
+          id: users.id,
           name: users.name,
         }
       })
@@ -37,7 +28,12 @@ export class TasksService {
     }
     // SUPER_ADMIN sees all
 
-    return query.orderBy(desc(tasks.createdAt));
+    const rows = await query.orderBy(desc(tasks.createdAt));
+    
+    return rows.map(r => ({
+      ...r.task,
+      assignedTo: r.user ? { id: r.user.id, name: r.user.name } : null
+    }));
   }
 
   async findOne(id: string) {
@@ -57,6 +53,14 @@ export class TasksService {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }).returning();
+
+    await this.db.insert(taskActivities).values({
+      taskId: task.id,
+      performedBy: user.id,
+      action: 'CREATED',
+      metadata: { dto },
+      createdAt: new Date().toISOString()
+    });
 
     return task;
   }
@@ -79,6 +83,14 @@ export class TasksService {
       .where(eq(tasks.id, id))
       .returning();
 
+    await this.db.insert(taskActivities).values({
+      taskId: updated.id,
+      performedBy: user.id,
+      action: dto.status && task.status !== dto.status ? 'STATUS_CHANGED' : 'UPDATED',
+      metadata: { changes: dto, previousStatus: task.status },
+      createdAt: new Date().toISOString()
+    });
+
     return updated;
   }
 
@@ -95,6 +107,14 @@ export class TasksService {
       .set({ status: 'DONE', completedAt: new Date().toISOString(), updatedAt: new Date().toISOString() })
       .where(eq(tasks.id, id))
       .returning();
+
+    await this.db.insert(taskActivities).values({
+      taskId: updated.id,
+      performedBy: user.id,
+      action: 'APPROVED',
+      metadata: {},
+      createdAt: new Date().toISOString()
+    });
 
     return updated;
   }
@@ -113,11 +133,20 @@ export class TasksService {
       .where(eq(tasks.id, id))
       .returning();
 
+    await this.db.insert(taskActivities).values({
+      taskId: updated.id,
+      performedBy: user.id,
+      action: 'FEEDBACK_ADDED',
+      metadata: { feedback },
+      createdAt: new Date().toISOString()
+    });
+
     return updated;
   }
 
-  async delete(id: string) {
+  async delete(id: string, user?: any) {
     await this.db.delete(tasks).where(eq(tasks.id, id));
+    // taskActivities cascade on delete, so no need to explicitly delete them.
     return { success: true };
   }
 }

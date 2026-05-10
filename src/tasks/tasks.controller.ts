@@ -49,8 +49,8 @@ export class TasksController {
   }
 
   @Delete(':id')
-  delete(@Param('id') id: string) {
-    return this.tasksService.delete(id);
+  delete(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.tasksService.delete(id, user);
   }
 
 }
