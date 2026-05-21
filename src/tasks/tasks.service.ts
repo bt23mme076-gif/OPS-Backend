@@ -1,13 +1,19 @@
-import { Injectable, Inject, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, Inject, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
 import { eq, and, or, sql, desc } from 'drizzle-orm';
 import { DB } from '../database/database.module';
 import { tasks, users, taskActivities } from '../../drizzle/schema';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
+import { MailService } from '../mail/mail.service';
 
 @Injectable()
 export class TasksService {
-  constructor(@Inject(DB) private db: any) {}
+  private readonly logger = new Logger(TasksService.name);
+
+  constructor(
+    @Inject(DB) private db: any,
+    private mailService: MailService,
+  ) {}
 
   async getTasksForRole(user: any) {
     let query = this.db
@@ -54,15 +60,48 @@ export class TasksService {
       updatedAt: new Date().toISOString(),
     }).returning();
 
-    await this.db.insert(taskActivities).values({
-      taskId: task.id,
-      performedBy: user.id,
-      action: 'CREATED',
-      metadata: { dto },
-      createdAt: new Date().toISOString()
-    });
+    try {
+      await this.db.insert(taskActivities).values({
+        taskId: task.id,
+        performedBy: user.id,
+        action: 'CREATED',
+        metadata: { dto },
+        createdAt: new Date().toISOString()
+      });
+    } catch (e) {
+      this.logger.warn(`Activity log skipped (create): ${e?.message}`);
+    }
+
+    // Send email notification to the assigned intern (fire-and-forget)
+    if (dto.assignedToId) {
+      this.sendTaskAssignmentEmail(task, dto.assignedToId).catch((err) =>
+        this.logger.warn(`Task assignment email failed: ${err?.message}`)
+      );
+    }
 
     return task;
+  }
+
+  private async sendTaskAssignmentEmail(task: any, assignedToId: string) {
+    const [assignee] = await this.db
+      .select({ id: users.id, name: users.name, email: users.email })
+      .from(users)
+      .where(eq(users.id, assignedToId))
+      .limit(1);
+
+    if (!assignee?.email) {
+      this.logger.warn(`Task assignment email skipped: no user found for id=${assignedToId}`);
+      return;
+    }
+
+    await this.mailService.sendTaskAssigned(
+      assignee.email,
+      assignee.name,
+      task.title,
+      task.priority,
+      task.squad,
+      task.dueDate,
+    );
   }
 
   async update(id: string, dto: any, user: any) {
@@ -83,13 +122,17 @@ export class TasksService {
       .where(eq(tasks.id, id))
       .returning();
 
-    await this.db.insert(taskActivities).values({
-      taskId: updated.id,
-      performedBy: user.id,
-      action: dto.status && task.status !== dto.status ? 'STATUS_CHANGED' : 'UPDATED',
-      metadata: { changes: dto, previousStatus: task.status },
-      createdAt: new Date().toISOString()
-    });
+    try {
+      await this.db.insert(taskActivities).values({
+        taskId: updated.id,
+        performedBy: user.id,
+        action: dto.status && task.status !== dto.status ? 'STATUS_CHANGED' : 'UPDATED',
+        metadata: { changes: dto, previousStatus: task.status },
+        createdAt: new Date().toISOString()
+      });
+    } catch (e) {
+      this.logger.warn(`Activity log skipped (update): ${e?.message}`);
+    }
 
     return updated;
   }
@@ -108,13 +151,17 @@ export class TasksService {
       .where(eq(tasks.id, id))
       .returning();
 
-    await this.db.insert(taskActivities).values({
-      taskId: updated.id,
-      performedBy: user.id,
-      action: 'APPROVED',
-      metadata: {},
-      createdAt: new Date().toISOString()
-    });
+    try {
+      await this.db.insert(taskActivities).values({
+        taskId: updated.id,
+        performedBy: user.id,
+        action: 'APPROVED',
+        metadata: {},
+        createdAt: new Date().toISOString()
+      });
+    } catch (e) {
+      this.logger.warn(`Activity log skipped (approve): ${e?.message}`);
+    }
 
     return updated;
   }
@@ -133,13 +180,17 @@ export class TasksService {
       .where(eq(tasks.id, id))
       .returning();
 
-    await this.db.insert(taskActivities).values({
-      taskId: updated.id,
-      performedBy: user.id,
-      action: 'FEEDBACK_ADDED',
-      metadata: { feedback },
-      createdAt: new Date().toISOString()
-    });
+    try {
+      await this.db.insert(taskActivities).values({
+        taskId: updated.id,
+        performedBy: user.id,
+        action: 'FEEDBACK_ADDED',
+        metadata: { feedback },
+        createdAt: new Date().toISOString()
+      });
+    } catch (e) {
+      this.logger.warn(`Activity log skipped (feedback): ${e?.message}`);
+    }
 
     return updated;
   }

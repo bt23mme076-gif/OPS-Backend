@@ -55,10 +55,10 @@ export class MailService {
       this.logger.log(`✅ Email sent to ${to}: ${subject} (MessageID: ${info.messageId})`);
       return info;
     } catch (err) {
+      // Log warning but do NOT re-throw — mail failure must never crash the API
       this.logger.warn(`⚠️ Failed to send email to ${to}: ${err.message}`);
-      throw err;
+      return null;
     }
-
   }
 
   async sendInvite(email: string, token: string) {
@@ -126,6 +126,45 @@ export class MailService {
         <p style="color: #4B4869; font-size: 15px; line-height: 1.6;">
           <strong>${studentName}</strong> has been placed as <strong>${roleTitle}</strong> at <strong>${company}</strong>.
           This has been logged in the OMTM dashboard.
+        </p>
+      </div>
+      `,
+    );
+  }
+
+  async sendTaskAssigned(
+    email: string,
+    assigneeName: string,
+    taskTitle: string,
+    priority: string,
+    squad: string,
+    dueDate?: string,
+  ) {
+    const dueDateStr = dueDate
+      ? new Date(dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+      : 'No due date';
+
+    await this.send(
+      email,
+      `Atyant Ops — New task assigned to you`,
+      `
+      <div style="font-family: 'DM Sans', sans-serif; max-width: 520px; margin: 0 auto; padding: 40px 24px; background: #ffffff;">
+        <span style="font-size: 22px; font-weight: 800; color: #6965BC; letter-spacing: -0.5px;">Atyant Ops</span>
+        <h2 style="font-size: 20px; font-weight: 700; color: #0F0E1A; margin: 28px 0 12px;">📋 New Task Assigned</h2>
+        <p style="color: #4B4869; font-size: 15px; line-height: 1.6; margin: 0 0 20px;">
+          Hi <strong>${assigneeName}</strong>, a new task has been assigned to you.
+        </p>
+        <div style="background: #F7F7FB; border-radius: 10px; padding: 20px 24px; margin-bottom: 24px;">
+          <p style="margin: 0 0 10px; color: #0F0E1A; font-weight: 700; font-size: 16px;">${taskTitle}</p>
+          <p style="margin: 4px 0; color: #4B4869; font-size: 14px;"><strong>Squad:</strong> ${squad || '—'}</p>
+          <p style="margin: 4px 0; color: #4B4869; font-size: 14px;"><strong>Priority:</strong> ${priority || '—'}</p>
+          <p style="margin: 4px 0; color: #4B4869; font-size: 14px;"><strong>Due Date:</strong> ${dueDateStr}</p>
+        </div>
+        <a href="${this.frontendUrl}/dashboard" style="display: inline-block; background: #6965BC; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 15px;">
+          View Task
+        </a>
+        <p style="color: #9896B8; font-size: 13px; margin-top: 28px;">
+          You are receiving this because a task was assigned to you in Atyant Ops.
         </p>
       </div>
       `,
