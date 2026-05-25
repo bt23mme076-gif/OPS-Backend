@@ -28,6 +28,12 @@ async function bootstrap() {
     origin: (origin, callback) => {
       // Allow requests with no origin (mobile apps, curl, Postman, server-to-server)
       if (!origin) return callback(null, true);
+      // Allow local network IPs in development (192.168.x.x, 10.x.x.x)
+      if (process.env.NODE_ENV !== 'production') {
+        if (/^http:\/\/(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(origin)) {
+          return callback(null, true);
+        }
+      }
       if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
