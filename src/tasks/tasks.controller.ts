@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { TasksService } from './tasks.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -48,9 +48,17 @@ export class TasksController {
     return this.tasksService.addFeedback(id, body.feedback, user);
   }
 
+  @Post(':id/follow-up')
+  sendFollowUp(
+    @Param('id') id: string,
+    @Body() body: { message?: string },
+    @CurrentUser() user: any,
+  ) {
+    return this.tasksService.sendFollowUp(id, body?.message, user);
+  }
+
   @Delete(':id')
   delete(@Param('id') id: string, @CurrentUser() user: any) {
     return this.tasksService.delete(id, user);
   }
-
 }
