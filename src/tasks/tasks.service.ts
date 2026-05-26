@@ -293,8 +293,112 @@ export class TasksService {
     return updated;
   }
 
+  async sendFollowUp(id: string, message: string | undefined, user: any) {
+    if (user.role === 'INTERN') {
+      throw new ForbiddenException('Interns cannot send follow-up messages');
+    }
+
+    const [task] = await this.db.select().from(tasks).where(eq(tasks.id, id)).limit(1);
+
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    if (user.role === 'MANAGER' && task.squad !== user.squad) {
+      throw new ForbiddenException('You can only send follow-up messages for tasks in your squad');
+    }
+
+    if (task.status === 'DONE') {
+      throw new ForbiddenException('This task is already completed');
+    }
+
+    if (!task.assignedToId) {
+      throw new NotFoundException('This task is not assigned to any intern');
+    }
+
+    const assignee = await this.getUserById(task.assignedToId);
+    const sender = await this.getUserById(user.id);
+
+    if (!assignee) {
+      throw new NotFoundException('Assigned intern not found');
+    }
+
+    const senderName = sender?.name ?? user?.name ?? 'Manager';
+    const followUpMessage =
+      message?.trim() ||
+      `Reminder: Please complete the task "${task.title}" as soon as possible.`;
+
+    const now = new Date().toISOString();
+
+    await this.db.insert(notifications).values({
+      userId: task.assignedToId,
+      type: 'card_assigned',
+      title: `Task follow-up reminder: ${task.title}`,
+      message: followUpMessage,
+      metadata: {
+        taskId: task.id,
+        taskTitle: task.title,
+        assignedToId: task.assignedToId,
+        assignedToName: assignee.name,
+        sentById: user.id,
+        sentByName: senderName,
+        priority: task.priority,
+        squad: task.squad,
+        dueDate: task.dueDate,
+        notificationFor: 'follow_up',
+      },
+      isRead: false,
+      createdAt: now,
+    });
+
+    try {
+      await this.db.insert(taskActivities).values({
+        taskId: task.id,
+        performedBy: user.id,
+        action: 'FOLLOW_UP_SENT',
+        metadata: {
+          message: followUpMessage,
+          sentTo: task.assignedToId,
+          sentToName: assignee.name,
+        },
+        createdAt: now,
+      });
+    } catch (e) {
+      this.logger.warn(`Activity log skipped (follow-up): ${e?.message}`);
+    }
+
+    return {
+      success: true,
+      message: 'Follow-up sent successfully',
+    };
+  }
+
   async delete(id: string, user?: any) {
+    const [task] = await this.db.select().from(tasks).where(eq(tasks.id, id)).limit(1);
+
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    if (user?.role === 'INTERN') {
+      throw new ForbiddenException('Interns cannot delete tasks');
+    }
+
+    if (user?.role === 'MANAGER' && task.squad !== user.squad) {
+      throw new ForbiddenException('You can only delete tasks in your squad');
+    }
+
+    try {
+      await this.db.delete(taskActivities).where(eq(taskActivities.taskId, id));
+    } catch (e) {
+      this.logger.warn(`Task activity cleanup skipped (delete): ${e?.message}`);
+    }
+
     await this.db.delete(tasks).where(eq(tasks.id, id));
-    return { success: true };
+
+    return {
+      success: true,
+      deletedId: id,
+    };
   }
 }
