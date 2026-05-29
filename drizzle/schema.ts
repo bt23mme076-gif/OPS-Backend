@@ -234,6 +234,7 @@ export const users = pgTable('users', {
   lorEligible: boolean('lor_eligible').notNull().default(false),
   managerId: uuid('manager_id').references(() => users.id),
   avatarUrl: text('avatar_url'),
+  repoLink: varchar('repo_link', { length: 500 }),
   invitedBy: uuid('invited_by').references(() => users.id),
   joinedAt: timestamp('joined_at', { mode: 'string' }).defaultNow(),
   createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
@@ -682,4 +683,3 @@ export const sessionsRelations = relations(sessions, ({ one }) => ({
     references: [answerCards.sessionId],
   }),
 }));
-
