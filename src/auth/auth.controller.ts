@@ -13,17 +13,32 @@ export class AuthController {
   @Post('login')
   async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: any) {
     const result = await this.authService.login(dto);
+    res.cookie('atyant_token', result.token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      path: '/',
+    });
     return result;
   }
 
   @Post('logout')
   logout(@Res({ passthrough: true }) res: any) {
+    res.clearCookie('atyant_token', { path: '/' });
     return { message: 'Logged out' };
   }
 
   @Post('accept-invite')
   async acceptInvite(@Body() dto: AcceptInviteDto, @Res({ passthrough: true }) res: any) {
     const result = await this.authService.acceptInvite(dto);
+    res.cookie('atyant_token', result.token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: '/',
+    });
     return result;
   }
 
