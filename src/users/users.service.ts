@@ -31,6 +31,7 @@ export class UsersService {
         squad: users.squad,
         status: users.status,
         avatarUrl: users.avatarUrl,
+        repoLink: users.repoLink,
         joinedAt: users.joinedAt,
         createdAt: users.createdAt,
       })
@@ -110,18 +111,29 @@ export class UsersService {
     const [target] = await this.db.select().from(users).where(eq(users.id, id)).limit(1);
     if (!target) throw new NotFoundException('User not found');
 
-    if (requester.role === 'MANAGER') {
-      if (target.squad !== requester.squad) {
-        throw new ForbiddenException('You can only update users in your own squad');
+    let updateData: any = {};
+    if (requester.role === 'INTERN') {
+      if (requester.id !== id) {
+        throw new ForbiddenException('You can only update your own profile');
       }
-      // Managers can only update status or managerId for interns
-      delete dto.role;
-      delete dto.squad;
+      if (dto.repoLink !== undefined) {
+        const trimmed = dto.repoLink?.trim();
+        updateData.repoLink = trimmed ? trimmed : null;
+      }
+    } else {
+      updateData = { ...dto };
+      if (requester.role === 'MANAGER') {
+        if (target.squad !== requester.squad) {
+          throw new ForbiddenException('You can only update users in your own squad');
+        }
+        delete updateData.role;
+        delete updateData.squad;
+      }
     }
 
     await this.db
       .update(users)
-      .set({ ...dto, updatedAt: new Date().toISOString() })
+      .set({ ...updateData, updatedAt: new Date().toISOString() })
       .where(eq(users.id, id));
 
     return { success: true, message: 'User updated' };
