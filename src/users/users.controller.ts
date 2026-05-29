@@ -60,7 +60,7 @@ export class UsersController {
 
   @Patch(':id')
   @UseGuards(RolesGuard)
-  @Roles('SUPER_ADMIN', 'MANAGER')
+  @Roles('SUPER_ADMIN', 'MANAGER', 'INTERN')
   updateUser(@Param('id') id: string, @Body() dto: any, @CurrentUser() user: any) {
     return this.usersService.updateUser(id, dto, user);
   }

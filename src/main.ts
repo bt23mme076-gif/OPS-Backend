@@ -17,6 +17,7 @@ async function bootstrap() {
   const allowedOrigins = [
     'https://ops.atyant.in',
     'https://opsapi.atyant.in',
+    'https://ops-atyant.vercel.app',
     'http://localhost:3000',
     'http://localhost:3001',
     'http://localhost:3002',
