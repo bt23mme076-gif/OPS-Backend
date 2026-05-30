@@ -12,6 +12,8 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { TasksModule } from './tasks/tasks.module';
 import { MongoModule } from './database/mongo.module';
 import { AtyantModule } from './atyant/atyant.module';
+import { OutreachModule } from './outreach/outreach.module';
+import { ContentModule } from './content/content.module';
 
 @Module({
   imports: [
@@ -27,7 +29,9 @@ import { AtyantModule } from './atyant/atyant.module';
     DashboardModule,
     TasksModule,
     MongoModule,
-    AtyantModule
+    AtyantModule,
+    OutreachModule,
+    ContentModule,
   ],
 })
 export class AppModule {}
