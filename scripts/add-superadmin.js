@@ -20,7 +20,7 @@ async function main() {
   const passwordHash = await bcrypt.hash(password, 12);
 
   await client`
-    INSERT INTO users (id, name, email, "passwordHash", role, status)
+    INSERT INTO users (id, name, email, password_hash, role, status)
     VALUES (
       ${uuidv4()},
       'Nitin Rai',
