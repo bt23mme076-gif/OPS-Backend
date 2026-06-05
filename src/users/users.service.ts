@@ -37,14 +37,31 @@ export class UsersService {
       })
       .from(users);
 
+    // Expose contact fields only to MANAGER and SUPER_ADMIN
+    if (user.role === 'MANAGER' || user.role === 'SUPER_ADMIN') {
+      query = this.db
+        .select({
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          role: users.role,
+          squad: users.squad,
+          status: users.status,
+          avatarUrl: users.avatarUrl,
+          repoLink: users.repoLink,
+          whatsappNumber: users.whatsappNumber,
+          linkedinUrl: users.linkedinUrl,
+          joinedAt: users.joinedAt,
+          createdAt: users.createdAt,
+        })
+        .from(users);
+    }
+
     if (user.role === 'MANAGER') {
-      // Managers only see their own squad interns
       query = query.where(and(eq(users.squad, user.squad), eq(users.role, 'INTERN')));
     } else if (user.role === 'INTERN') {
-      // Interns only see themselves
       query = query.where(eq(users.id, user.id));
     }
-    // SUPER_ADMIN sees all
 
     return query.orderBy(users.createdAt);
   }
@@ -95,16 +112,13 @@ export class UsersService {
       });
     }
 
-    // Send invite email — non-blocking, invite is saved regardless
     try {
       await this.mailService.sendInvite(dto.email, token);
     } catch (mailErr) {
-      // Log the error but don't fail the request — invite is already in DB
       console.error(`[InviteUser] Email send failed for ${dto.email}:`, mailErr?.message ?? mailErr);
     }
 
     return { success: true, message: 'Invite sent' };
-
   }
 
   async updateUser(id: string, dto: any, requester: any) {
@@ -119,6 +133,14 @@ export class UsersService {
       if (dto.repoLink !== undefined) {
         const trimmed = dto.repoLink?.trim();
         updateData.repoLink = trimmed ? trimmed : null;
+      }
+      if (dto.whatsappNumber !== undefined) {
+        const trimmed = dto.whatsappNumber?.trim();
+        updateData.whatsappNumber = trimmed ? trimmed : null;
+      }
+      if (dto.linkedinUrl !== undefined) {
+        const trimmed = dto.linkedinUrl?.trim();
+        updateData.linkedinUrl = trimmed ? trimmed : null;
       }
     } else {
       updateData = { ...dto };

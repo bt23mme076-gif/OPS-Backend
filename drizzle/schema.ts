@@ -235,12 +235,13 @@ export const users = pgTable('users', {
   managerId: uuid('manager_id').references(() => users.id),
   avatarUrl: text('avatar_url'),
   repoLink: varchar('repo_link', { length: 500 }),
+  whatsappNumber: varchar('whatsapp_number', { length: 20 }),   // ← NEW
+  linkedinUrl: varchar('linkedin_url', { length: 500 }),         // ← NEW
   invitedBy: uuid('invited_by').references(() => users.id),
   joinedAt: timestamp('joined_at', { mode: 'string' }).defaultNow(),
   createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { mode: 'string' }).defaultNow().notNull(),
 });
-
 
 export const userPermissions = pgTable('user_permissions', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -337,7 +338,6 @@ export const students = pgTable('students', {
   createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { mode: 'string' }).defaultNow().notNull(),
 });
-
 
 // ─── PIPELINE ACTIVITY LOG ────────────────────────────────────────────────────
 
@@ -565,7 +565,6 @@ export const notifications = pgTable('notifications', {
   isRead: boolean('is_read').notNull().default(false),
   createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
 });
-
 
 // ─── RELATIONS ────────────────────────────────────────────────────────────────
 

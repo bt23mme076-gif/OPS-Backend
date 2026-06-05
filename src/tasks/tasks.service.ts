@@ -13,6 +13,92 @@ export class TasksService {
     private mailService: MailService,
   ) {}
 
+  private parseFeedback(feedback?: string | null) {
+    if (!feedback) return {};
+
+    try {
+      const parsed = JSON.parse(feedback);
+      if (parsed && typeof parsed === 'object') return parsed;
+      return {};
+    } catch {
+      return {};
+    }
+  }
+
+  private stringifyFeedback(data: any) {
+    return JSON.stringify(data ?? {});
+  }
+
+  private enrichTask(task: any) {
+    const feedbackData = this.parseFeedback(task?.feedback);
+
+    return {
+      ...task,
+      submissionPrLink: feedbackData.submissionPrLink ?? task?.proofLink ?? null,
+      submissionDocLink: feedbackData.submissionDocLink ?? null,
+      submissionSummary: feedbackData.submissionSummary ?? null,
+      submissionBlockers: feedbackData.submissionBlockers ?? null,
+      submittedAt: feedbackData.submittedAt ?? null,
+      reviewStatus: feedbackData.reviewStatus ?? null,
+      reviewFeedback: feedbackData.reviewFeedback ?? null,
+      reviewedAt: feedbackData.reviewedAt ?? null,
+    };
+  }
+
+  private buildSafeUpdatePayload(dto: any, existingTask: any) {
+    const allowed: any = {};
+    const currentFeedback = this.parseFeedback(existingTask?.feedback);
+
+    if (dto.title !== undefined) allowed.title = dto.title;
+    if (dto.description !== undefined) allowed.description = dto.description;
+    if (dto.status !== undefined) allowed.status = dto.status;
+    if (dto.priority !== undefined) allowed.priority = dto.priority;
+    if (dto.assignedToId !== undefined) allowed.assignedToId = dto.assignedToId;
+    if (dto.dueDate !== undefined) allowed.dueDate = dto.dueDate;
+    if (dto.squad !== undefined) allowed.squad = dto.squad;
+    if (dto.proofLink !== undefined) allowed.proofLink = dto.proofLink;
+
+    const hasSubmissionData =
+      dto.submissionPrLink !== undefined ||
+      dto.submissionDocLink !== undefined ||
+      dto.submissionSummary !== undefined ||
+      dto.submissionBlockers !== undefined ||
+      dto.submittedAt !== undefined ||
+      dto.reviewStatus !== undefined ||
+      dto.reviewFeedback !== undefined ||
+      dto.reviewedAt !== undefined;
+
+    if (hasSubmissionData) {
+      const nextFeedback = {
+        ...currentFeedback,
+        submissionPrLink: dto.submissionPrLink ?? currentFeedback.submissionPrLink ?? allowed.proofLink ?? existingTask?.proofLink ?? '',
+        submissionDocLink: dto.submissionDocLink ?? currentFeedback.submissionDocLink ?? '',
+        submissionSummary: dto.submissionSummary ?? currentFeedback.submissionSummary ?? '',
+        submissionBlockers: dto.submissionBlockers ?? currentFeedback.submissionBlockers ?? '',
+        submittedAt: dto.submittedAt ?? currentFeedback.submittedAt ?? '',
+        reviewStatus: dto.reviewStatus ?? currentFeedback.reviewStatus ?? '',
+        reviewFeedback: dto.reviewFeedback ?? currentFeedback.reviewFeedback ?? '',
+        reviewedAt: dto.reviewedAt ?? currentFeedback.reviewedAt ?? '',
+      };
+
+      allowed.feedback = this.stringifyFeedback(nextFeedback);
+
+      if (dto.submissionPrLink !== undefined) {
+        allowed.proofLink = dto.submissionPrLink;
+      }
+    } else if (dto.feedback !== undefined) {
+      const nextFeedback = {
+        ...currentFeedback,
+        reviewFeedback: dto.feedback,
+      };
+
+      allowed.feedback = this.stringifyFeedback(nextFeedback);
+    }
+
+    allowed.updatedAt = new Date().toISOString();
+    return allowed;
+  }
+
   async getTasksForRole(user: any) {
     let query = this.db
       .select({
@@ -34,7 +120,7 @@ export class TasksService {
     const rows = await query.orderBy(desc(tasks.createdAt));
 
     return rows.map((r) => ({
-      ...r.task,
+      ...this.enrichTask(r.task),
       assignedTo: r.user ? { id: r.user.id, name: r.user.name } : null,
     }));
   }
@@ -42,7 +128,7 @@ export class TasksService {
   async findOne(id: string) {
     const [task] = await this.db.select().from(tasks).where(eq(tasks.id, id)).limit(1);
     if (!task) throw new NotFoundException('Task not found');
-    return task;
+    return this.enrichTask(task);
   }
 
   async create(dto: any, user: any) {
@@ -79,7 +165,7 @@ export class TasksService {
       );
     }
 
-    return task;
+    return this.enrichTask(task);
   }
 
   private formatDate(value?: string) {
@@ -111,6 +197,19 @@ export class TasksService {
       .limit(1);
 
     return user;
+  }
+
+  private async getSuperAdmins() {
+    return this.db
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        role: users.role,
+        squad: users.squad,
+      })
+      .from(users)
+      .where(eq(users.role, 'SUPER_ADMIN'));
   }
 
   private async createTaskAssignmentNotifications(task: any, assignedToId: string, assigner: any) {
@@ -176,6 +275,90 @@ export class TasksService {
     await this.db.insert(notifications).values(notificationRows);
   }
 
+  private async createSubmissionNotifications(task: any, previousTask: any, user: any, dto: any) {
+    const assignee = await this.getUserById(previousTask.assignedToId);
+    const assigner = await this.getUserById(previousTask.assignedById);
+    const superAdmins = await this.getSuperAdmins();
+    const now = new Date().toISOString();
+
+    const submittedByName = assignee?.name ?? user?.name ?? 'Intern';
+    const prLink = dto.submissionPrLink ?? dto.proofLink ?? previousTask.proofLink ?? '';
+
+    const receivers = new Map<string, any>();
+
+    if (assigner?.id && assigner.id !== user.id) {
+      receivers.set(assigner.id, assigner);
+    }
+
+    for (const admin of superAdmins) {
+      if (admin?.id && admin.id !== user.id) {
+        receivers.set(admin.id, admin);
+      }
+    }
+
+    if (receivers.size === 0) return;
+
+    await this.db.insert(notifications).values(
+      Array.from(receivers.values()).map((receiver) => ({
+        userId: receiver.id,
+        type: 'card_assigned',
+        title: `Task submitted for review: ${previousTask.title}`,
+        message: `${submittedByName} submitted work for "${previousTask.title}". Please review the PR link in OPS.`,
+        metadata: {
+          taskId: previousTask.id,
+          taskTitle: previousTask.title,
+          submittedById: user.id,
+          submittedByName,
+          assignedById: previousTask.assignedById,
+          assignedToId: previousTask.assignedToId,
+          prLink,
+          notificationFor: 'task_submission_review',
+        },
+        isRead: false,
+        createdAt: now,
+      }))
+    );
+  }
+
+  private async createReviewDecisionNotification(task: any, previousTask: any, user: any, dto: any) {
+    if (!previousTask.assignedToId || previousTask.assignedToId === user.id) return;
+
+    const reviewer = await this.getUserById(user.id);
+    const reviewerName = reviewer?.name ?? user?.name ?? 'Manager';
+    const status = dto.reviewStatus ?? '';
+    const now = new Date().toISOString();
+
+    let title = '';
+    let message = '';
+
+    if (status === 'APPROVED' || dto.status === 'DONE') {
+      title = `Task completed: ${previousTask.title}`;
+      message = `${reviewerName} reviewed and marked your task as completed.`;
+    } else if (status === 'CHANGES_REQUESTED') {
+      title = `Changes requested: ${previousTask.title}`;
+      message = `${reviewerName} requested changes for your submitted task. Please check the feedback in OPS.`;
+    } else {
+      return;
+    }
+
+    await this.db.insert(notifications).values({
+      userId: previousTask.assignedToId,
+      type: 'card_assigned',
+      title,
+      message,
+      metadata: {
+        taskId: previousTask.id,
+        taskTitle: previousTask.title,
+        reviewedById: user.id,
+        reviewedByName: reviewerName,
+        reviewStatus: status,
+        notificationFor: 'task_review_decision',
+      },
+      isRead: false,
+      createdAt: now,
+    });
+  }
+
   private async sendTaskAssignmentEmail(task: any, assignedToId: string) {
     const [assignee] = await this.db
       .select({ id: users.id, name: users.name, email: users.email })
@@ -210,17 +393,52 @@ export class TasksService {
       throw new ForbiddenException('You can only update your own tasks');
     }
 
+    if (user.role === 'INTERN') {
+      const allowedInternKeys = [
+        'status',
+        'proofLink',
+        'submissionPrLink',
+        'submissionDocLink',
+        'submissionSummary',
+        'submissionBlockers',
+        'submittedAt',
+        'reviewStatus',
+      ];
+
+      const hasOnlyAllowedKeys = Object.keys(dto).every((key) => allowedInternKeys.includes(key));
+
+      if (!hasOnlyAllowedKeys) {
+        throw new ForbiddenException('Interns can only submit work updates');
+      }
+    }
+
+    const safePayload = this.buildSafeUpdatePayload(dto, task);
+
     const [updated] = await this.db
       .update(tasks)
-      .set({ ...dto, updatedAt: new Date().toISOString() })
+      .set(safePayload)
       .where(eq(tasks.id, id))
       .returning();
+
+    const isSubmission =
+      user.role === 'INTERN' &&
+      (dto.submissionPrLink || dto.proofLink || dto.reviewStatus === 'SUBMITTED_FOR_REVIEW');
+
+    const isReviewDecision =
+      user.role !== 'INTERN' &&
+      (dto.reviewStatus === 'APPROVED' || dto.reviewStatus === 'CHANGES_REQUESTED' || dto.status === 'DONE');
 
     try {
       await this.db.insert(taskActivities).values({
         taskId: updated.id,
         performedBy: user.id,
-        action: dto.status && task.status !== dto.status ? 'STATUS_CHANGED' : 'UPDATED',
+        action: isSubmission
+          ? 'SUBMITTED_FOR_REVIEW'
+          : isReviewDecision
+            ? 'REVIEW_DECISION'
+            : dto.status && task.status !== dto.status
+              ? 'STATUS_CHANGED'
+              : 'UPDATED',
         metadata: { changes: dto, previousStatus: task.status },
         createdAt: new Date().toISOString(),
       });
@@ -228,7 +446,19 @@ export class TasksService {
       this.logger.warn(`Activity log skipped (update): ${e?.message}`);
     }
 
-    return updated;
+    if (isSubmission) {
+      this.createSubmissionNotifications(updated, task, user, dto).catch((err) =>
+        this.logger.warn(`Submission notification failed: ${err?.message}`)
+      );
+    }
+
+    if (isReviewDecision) {
+      this.createReviewDecisionNotification(updated, task, user, dto).catch((err) =>
+        this.logger.warn(`Review decision notification failed: ${err?.message}`)
+      );
+    }
+
+    return this.enrichTask(updated);
   }
 
   async approve(id: string, user: any) {
@@ -239,11 +469,17 @@ export class TasksService {
 
     if (user.role === 'MANAGER' && task.squad !== user.squad) throw new ForbiddenException();
 
+    const feedbackData = {
+      ...this.parseFeedback(task.feedback),
+      reviewStatus: 'APPROVED',
+      reviewedAt: new Date().toISOString(),
+    };
+
     const [updated] = await this.db
       .update(tasks)
       .set({
         status: 'DONE',
-        completedAt: new Date().toISOString(),
+        feedback: this.stringifyFeedback(feedbackData),
         updatedAt: new Date().toISOString(),
       })
       .where(eq(tasks.id, id))
@@ -261,7 +497,11 @@ export class TasksService {
       this.logger.warn(`Activity log skipped (approve): ${e?.message}`);
     }
 
-    return updated;
+    this.createReviewDecisionNotification(updated, task, user, { reviewStatus: 'APPROVED', status: 'DONE' }).catch((err) =>
+      this.logger.warn(`Approve notification failed: ${err?.message}`)
+    );
+
+    return this.enrichTask(updated);
   }
 
   async addFeedback(id: string, feedback: string, user: any) {
@@ -272,9 +512,15 @@ export class TasksService {
 
     if (user.role === 'MANAGER' && task.squad !== user.squad) throw new ForbiddenException();
 
+    const feedbackData = {
+      ...this.parseFeedback(task.feedback),
+      reviewFeedback: feedback,
+      reviewedAt: new Date().toISOString(),
+    };
+
     const [updated] = await this.db
       .update(tasks)
-      .set({ feedback, updatedAt: new Date().toISOString() })
+      .set({ feedback: this.stringifyFeedback(feedbackData), updatedAt: new Date().toISOString() })
       .where(eq(tasks.id, id))
       .returning();
 
@@ -290,7 +536,7 @@ export class TasksService {
       this.logger.warn(`Activity log skipped (feedback): ${e?.message}`);
     }
 
-    return updated;
+    return this.enrichTask(updated);
   }
 
   async sendFollowUp(id: string, message: string | undefined, user: any) {
