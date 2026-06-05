@@ -1,1 +1,0 @@
-ALTER TABLE "outreach_contacts" ADD COLUMN IF NOT EXISTS "whatsapp_number" text;
