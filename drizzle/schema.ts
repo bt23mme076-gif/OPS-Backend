@@ -524,6 +524,7 @@ export const outreachContacts = pgTable('outreach_contacts', {
   name: varchar('name', { length: 255 }).notNull(),
   college: varchar('college', { length: 255 }),
   linkedinUrl: text('linkedin_url'),
+  whatsappNumber: text('whatsapp_number'),
   contactedById: uuid('contacted_by_id')
     .notNull()
     .references(() => users.id),
