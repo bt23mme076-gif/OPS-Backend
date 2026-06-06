@@ -10,4 +10,13 @@ export class UpdateTaskDto {
   @IsOptional() @IsString() proofLink?: string;
   @IsOptional() @IsString() feedback?: string;
   @IsOptional() @IsString() squad?: string;
+
+  @IsOptional() @IsString() submissionPrLink?: string;
+  @IsOptional() @IsString() submissionDocLink?: string;
+  @IsOptional() @IsString() submissionSummary?: string;
+  @IsOptional() @IsString() submissionBlockers?: string;
+  @IsOptional() @IsString() submittedAt?: string;
+  @IsOptional() @IsString() reviewStatus?: string;
+  @IsOptional() @IsString() reviewFeedback?: string;
+  @IsOptional() @IsString() reviewedAt?: string;
 }
