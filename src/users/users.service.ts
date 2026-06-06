@@ -5,7 +5,7 @@ import {
   ForbiddenException,
   ConflictException,
 } from '@nestjs/common';
-import { eq, ne, and } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 import { addDays } from 'date-fns';
 import { DB } from '../database/database.module';
@@ -22,6 +22,8 @@ export class UsersService {
   ) {}
 
   async getUsersForRole(user: any) {
+    const isPrivileged = user.role === 'SUPER_ADMIN' || user.role === 'MANAGER';
+
     let query = this.db
       .select({
         id: users.id,
@@ -34,6 +36,8 @@ export class UsersService {
         repoLink: users.repoLink,
         joinedAt: users.joinedAt,
         createdAt: users.createdAt,
+        // Only expose githubUsername to MANAGER and SUPER_ADMIN
+        ...(isPrivileged && { githubUsername: users.githubUsername }),
       })
       .from(users);
 
@@ -104,7 +108,6 @@ export class UsersService {
     }
 
     return { success: true, message: 'Invite sent' };
-
   }
 
   async updateUser(id: string, dto: any, requester: any) {
@@ -116,9 +119,14 @@ export class UsersService {
       if (requester.id !== id) {
         throw new ForbiddenException('You can only update your own profile');
       }
+      // INTERNs can only update repoLink and githubUsername on their own profile
       if (dto.repoLink !== undefined) {
         const trimmed = dto.repoLink?.trim();
         updateData.repoLink = trimmed ? trimmed : null;
+      }
+      if (dto.githubUsername !== undefined) {
+        const trimmed = dto.githubUsername?.trim();
+        updateData.githubUsername = trimmed ? trimmed : null;
       }
     } else {
       updateData = { ...dto };
