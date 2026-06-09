@@ -53,12 +53,13 @@ export class UsersService {
           status: users.status,
           avatarUrl: users.avatarUrl,
           repoLink: users.repoLink,
-           ...(isPrivileged && {
-          githubUsername: users.githubUsername,
-          whatsappNumber: users.whatsappNumber,
-          linkedinUrl: users.linkedinUrl,
-          joinedAt: users.joinedAt,
-          createdAt: users.createdAt,
+          ...(isPrivileged && {
+            githubUsername: users.githubUsername,
+            whatsappNumber: users.whatsappNumber,
+            linkedinUrl: users.linkedinUrl,
+            joinedAt: users.joinedAt,
+            createdAt: users.createdAt,
+          }),
         })
         .from(users);
     }

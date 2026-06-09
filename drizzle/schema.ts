@@ -235,6 +235,8 @@ export const users = pgTable('users', {
   managerId: uuid('manager_id').references(() => users.id),
   avatarUrl: text('avatar_url'),
   repoLink: varchar('repo_link', { length: 500 }),
+  whatsappNumber: varchar('whatsapp_number', { length: 20 }),
+  linkedinUrl: varchar('linkedin_url', { length: 500 }),
   githubUsername: varchar('github_username', { length: 100 }),
   invitedBy: uuid('invited_by').references(() => users.id),
   joinedAt: timestamp('joined_at', { mode: 'string' }).defaultNow(),
