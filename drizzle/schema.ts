@@ -22,6 +22,7 @@ export const squadEnum = pgEnum('squad', [
   'CONTENT',
   'PRODUCT',
   'HR_DESIGN',
+  'CBM',
 ]);
 
 export const userStatusEnum = pgEnum('user_status', [
