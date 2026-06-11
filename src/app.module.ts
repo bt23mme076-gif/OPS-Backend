@@ -14,6 +14,7 @@ import { MongoModule } from './database/mongo.module';
 import { AtyantModule } from './atyant/atyant.module';
 import { OutreachModule } from './outreach/outreach.module';
 import { ContentModule } from './content/content.module';
+import { LinkedinModule } from './linkedin/linkedin.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { ContentModule } from './content/content.module';
     AtyantModule,
     OutreachModule,
     ContentModule,
+    LinkedinModule,
   ],
 })
 export class AppModule {}

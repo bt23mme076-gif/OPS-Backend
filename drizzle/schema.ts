@@ -22,6 +22,7 @@ export const squadEnum = pgEnum('squad', [
   'CONTENT',
   'PRODUCT',
   'HR_DESIGN',
+  'CBM',
 ]);
 
 export const userStatusEnum = pgEnum('user_status', [
@@ -217,6 +218,53 @@ export const activityTypeEnum = pgEnum('activity_type', [
 ]);
 
 export const entityTypeEnum = pgEnum('entity_type', ['mentor', 'student']);
+
+// ─── LINKEDIN GROWTH ENGINE ───────────────────────────────────────────────────
+
+export const linkedinPostFormatEnum = pgEnum('linkedin_post_format', [
+  'text',
+  'image',
+  'carousel',
+  'video',
+  'poll',
+  'document',
+  'repost',
+]);
+
+export const linkedinPostStatusEnum = pgEnum('linkedin_post_status', [
+  'idea',
+  'draft',
+  'scheduled',
+  'published',
+  'archived',
+]);
+
+export const linkedinLeadTypeEnum = pgEnum('linkedin_lead_type', [
+  'student',
+  'mentor',
+  'college_tpo',
+  'partner',
+  'investor',
+  'other',
+]);
+
+export const linkedinLeadStageEnum = pgEnum('linkedin_lead_stage', [
+  'new',
+  'engaged',
+  'in_conversation',
+  'qualified',
+  'converted',
+  'lost',
+]);
+
+export const linkedinEngagementTypeEnum = pgEnum('linkedin_engagement_type', [
+  'comment',
+  'reaction',
+  'dm',
+  'connection_request',
+  'profile_view',
+  'inbound',
+]);
 
 // ─── USERS & AUTH ─────────────────────────────────────────────────────────────
 
@@ -569,6 +617,73 @@ export const notifications = pgTable('notifications', {
 });
 
 
+// ─── LINKEDIN POSTS ───────────────────────────────────────────────────────────
+
+export const linkedinPosts = pgTable('linkedin_posts', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  // Internal label for the tracker (not the post body)
+  title: varchar('title', { length: 255 }).notNull(),
+  // Content pillar / theme: e.g. "Founder journey", "Placement proof", "10TH"
+  topic: varchar('topic', { length: 120 }),
+  // First line — the scroll-stopper
+  hook: text('hook'),
+  // Full draft body (optional — can be drafted elsewhere)
+  body: text('body'),
+  format: linkedinPostFormatEnum('format').notNull().default('text'),
+  status: linkedinPostStatusEnum('status').notNull().default('idea'),
+  // Whose profile it goes out on (Nitin, intern, Atyant page)
+  authorId: uuid('author_id').references(() => users.id),
+  // Intern responsible for drafting
+  assignedToId: uuid('assigned_to_id').references(() => users.id),
+  postUrl: text('post_url'),
+  scheduledFor: timestamp('scheduled_for', { mode: 'string' }),
+  publishedAt: timestamp('published_at', { mode: 'string' }),
+  // Engagement metrics — manual entry or CSV import from LinkedIn native analytics
+  impressions: integer('impressions').notNull().default(0),
+  reactions: integer('reactions').notNull().default(0),
+  comments: integer('comments').notNull().default(0),
+  reposts: integer('reposts').notNull().default(0),
+  profileViews: integer('profile_views').notNull().default(0),
+  followersGained: integer('followers_gained').notNull().default(0),
+  // Leads attributed to this post — denormalised counter, kept in sync on lead writes
+  leadsGenerated: integer('leads_generated').notNull().default(0),
+  notes: text('notes'),
+  createdBy: uuid('created_by')
+    .notNull()
+    .references(() => users.id),
+  createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { mode: 'string' }).defaultNow().notNull(),
+});
+
+// ─── LINKEDIN LEADS ───────────────────────────────────────────────────────────
+
+export const linkedinLeads = pgTable('linkedin_leads', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: varchar('name', { length: 255 }).notNull(),
+  // Their LinkedIn headline / current role
+  headline: varchar('headline', { length: 255 }),
+  linkedinUrl: text('linkedin_url'),
+  email: varchar('email', { length: 255 }),
+  phone: varchar('phone', { length: 20 }),
+  leadType: linkedinLeadTypeEnum('lead_type').notNull().default('student'),
+  stage: linkedinLeadStageEnum('stage').notNull().default('new'),
+  // Attribution — which post brought this lead in
+  sourcePostId: uuid('source_post_id').references(() => linkedinPosts.id),
+  engagementType: linkedinEngagementTypeEnum('engagement_type'),
+  assignedToId: uuid('assigned_to_id').references(() => users.id),
+  // Conversion — when a lead becomes a real student/mentor record
+  convertedToType: entityTypeEnum('converted_to_type'),
+  convertedToId: uuid('converted_to_id'),
+  convertedAt: timestamp('converted_at', { mode: 'string' }),
+  notes: text('notes'),
+  createdBy: uuid('created_by')
+    .notNull()
+    .references(() => users.id),
+  lastActivityAt: timestamp('last_activity_at', { mode: 'string' }).defaultNow(),
+  createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { mode: 'string' }).defaultNow().notNull(),
+});
+
 // ─── RELATIONS ────────────────────────────────────────────────────────────────
 
 export const usersRelations = relations(users, ({ many, one }) => ({
@@ -684,5 +799,30 @@ export const sessionsRelations = relations(sessions, ({ one }) => ({
   answerCard: one(answerCards, {
     fields: [sessions.id],
     references: [answerCards.sessionId],
+  }),
+}));
+
+export const linkedinPostsRelations = relations(linkedinPosts, ({ one, many }) => ({
+  author: one(users, {
+    fields: [linkedinPosts.authorId],
+    references: [users.id],
+    relationName: 'linkedinAuthor',
+  }),
+  assignedTo: one(users, {
+    fields: [linkedinPosts.assignedToId],
+    references: [users.id],
+    relationName: 'linkedinAssignedTo',
+  }),
+  leads: many(linkedinLeads),
+}));
+
+export const linkedinLeadsRelations = relations(linkedinLeads, ({ one }) => ({
+  sourcePost: one(linkedinPosts, {
+    fields: [linkedinLeads.sourcePostId],
+    references: [linkedinPosts.id],
+  }),
+  assignedTo: one(users, {
+    fields: [linkedinLeads.assignedToId],
+    references: [users.id],
   }),
 }));
