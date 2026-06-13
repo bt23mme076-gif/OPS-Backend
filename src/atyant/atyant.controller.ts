@@ -39,4 +39,18 @@ export class AtyantController {
   getStats() {
     return this.svc.getStats();
   }
+
+  @Get('sessions')
+  getSessions(
+    @Query('status') status?: string,
+    @Query('limit') limit = '200',
+    @Query('skip') skip = '0',
+  ) {
+    return this.svc.getSessions(status, +limit, +skip);
+  }
+
+  @Get('sessions/stats')
+  getSessionStats() {
+    return this.svc.getSessionStats();
+  }
 }
