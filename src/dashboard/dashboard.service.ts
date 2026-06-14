@@ -4,7 +4,7 @@ import { subDays, startOfMonth } from 'date-fns';
 import { DB } from '../database/database.module';
 import {
   students, mentors, sessions, rolesPosted,
-  applications, pipelineActivities, users,
+  pipelineActivities, tasks,
 } from '../../drizzle/schema';
 
 @Injectable()
@@ -28,7 +28,7 @@ export class DashboardService {
           sql`${sessions.scheduledAt} >= ${weekAgo}::timestamp`,
         ),
         // Tasks — try/catch in case table doesn't exist yet
-        this.db.execute(sql`SELECT COUNT(*) as count FROM tasks WHERE status != 'done'`).then(
+        this.db.execute(sql`SELECT COUNT(*) as count FROM tasks WHERE status != 'DONE'`).then(
           (r: any) => [{ count: Number((r.rows ?? r)[0]?.count ?? 0) }]
         ).catch(() => [{ count: 0 }]),
       ]);
@@ -54,6 +54,30 @@ export class DashboardService {
     const total = Number(totalStudents?.count ?? 0);
     const placed = Number(placedResult?.count ?? 0);
     const conversionRate = total > 0 ? Math.round((placed / total) * 100) : 0;
+    // Weekly momentum: leading squad and completed task count
+const weeklyMomentumRows = await this.db.execute(sql`
+  SELECT 
+    squad,
+    COALESCE(SUM(points), 0) as points,
+    COUNT(*) as completed_tasks
+  FROM tasks
+  WHERE status = 'DONE'
+  GROUP BY squad
+  ORDER BY points DESC
+  LIMIT 1
+`).then((r: any) => r.rows ?? r).catch(() => []);
+
+const [completedTasksResult] = await this.db.execute(sql`
+  SELECT COUNT(*) as count
+  FROM tasks
+  WHERE status = 'DONE'
+`).then((r: any) => r.rows ?? r).catch(() => [{ count: 0 }]);
+
+const weeklyMomentum = {
+  leadingSquad: weeklyMomentumRows[0]?.squad ?? null,
+  leadingSquadPoints: Number(weeklyMomentumRows[0]?.points ?? 0),
+  totalCompletedTasks: Number(completedTasksResult?.count ?? 0),
+};
 
     return {
       totalMentors: Number(totalMentors?.count ?? 0),
@@ -63,6 +87,7 @@ export class DashboardService {
       sessionsThisWeek: Number(sessionsThisWeek?.count ?? 0),
       pendingTasks: Number(pendingTasks?.count ?? 0),
       conversionRate,
+      weeklyMomentum,
       recentActivity,
     };
   }
