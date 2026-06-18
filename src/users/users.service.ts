@@ -137,7 +137,7 @@ export class UsersService {
       if (requester.id !== id) {
         throw new ForbiddenException('You can only update your own profile');
       }
-      // INTERNs can only update repoLink and githubUsername on their own profile
+      // INTERNs can only update repoLink, githubUsername, whatsappNumber, and linkedinUrl on their own profile
       if (dto.repoLink !== undefined) {
         const trimmed = dto.repoLink?.trim();
         updateData.repoLink = trimmed ? trimmed : null;
@@ -145,6 +145,14 @@ export class UsersService {
       if (dto.githubUsername !== undefined) {
         const trimmed = dto.githubUsername?.trim();
         updateData.githubUsername = trimmed ? trimmed : null;
+      }
+      if (dto.whatsappNumber !== undefined) {
+        const trimmed = dto.whatsappNumber?.trim();
+        updateData.whatsappNumber = trimmed ? trimmed : null;
+      }
+      if (dto.linkedinUrl !== undefined) {
+        const trimmed = dto.linkedinUrl?.trim();
+        updateData.linkedinUrl = trimmed ? trimmed : null;
       }
     } else {
       updateData = { ...dto };
