@@ -618,6 +618,57 @@ export class TasksService {
       message: 'Follow-up sent successfully',
     };
   }
+  async getLeaderboard() {
+  const rows = await this.db
+    .select({
+      task: tasks,
+      user: {
+        id: users.id,
+        name: users.name,
+        squad: users.squad,
+      },
+    })
+    .from(tasks)
+    .leftJoin(users, eq(tasks.assignedToId, users.id))
+    .orderBy(desc(tasks.createdAt))
+
+  const map = new Map<
+    string,
+    { id: string; name: string; squad?: string; points: number; done: number }
+  >()
+
+  rows.forEach((row) => {
+    const task = row.task
+    const user = row.user
+
+    if (!task || task.status !== 'DONE') return
+
+    const id = task.assignedToId || user?.id
+    if (!id) return
+
+    const current = map.get(id) ?? {
+      id,
+      name: user?.name ?? 'Teammate',
+      squad: user?.squad ?? task.squad,
+      points: 0,
+      done: 0,
+    }
+
+    current.points += task.points || 0
+    current.done += 1
+    map.set(id, current)
+  })
+
+  return [...map.values()]
+    .sort((a, b) => {
+      if (b.points !== a.points) return b.points - a.points
+      return a.name.localeCompare(b.name)
+    })
+    .map((item, index) => ({
+      ...item,
+      rank: index + 1,
+    }))
+}
 
   async delete(id: string, user?: any) {
     const [task] = await this.db.select().from(tasks).where(eq(tasks.id, id)).limit(1);

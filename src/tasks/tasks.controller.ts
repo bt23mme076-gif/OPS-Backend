@@ -22,6 +22,10 @@ export class TasksController {
   getMyTasks(@CurrentUser() user: any) {
     return this.tasksService.getTasksForRole({ ...user, viewMode: 'mine' });
   }
+  @Get('leaderboard')
+getLeaderboard() {
+  return this.tasksService.getLeaderboard();
+}
 
   @Get(':id')
   findOne(@Param('id') id: string) {
