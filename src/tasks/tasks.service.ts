@@ -424,7 +424,7 @@ const safePayload = this.buildSafeUpdatePayload(dto, task);
       .set(safePayload)
       .where(eq(tasks.id, id))
       .returning();
-    console.log('UPDATED TASK:', this.enrichTask(updated));
+    
 
     const isSubmission =
       user.role === 'INTERN' &&
