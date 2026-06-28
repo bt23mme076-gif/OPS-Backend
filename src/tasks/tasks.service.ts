@@ -35,7 +35,8 @@ export class TasksService {
     return {
       ...task,
       submissionPrLink: feedbackData.submissionPrLink ?? task?.proofLink ?? null,
-      submissionDocLink: feedbackData.submissionDocLink ?? null,
+submissionPrLink2: feedbackData.submissionPrLink2 ?? null,
+submissionDocLink: feedbackData.submissionDocLink ?? null,
       submissionSummary: feedbackData.submissionSummary ?? null,
       submissionBlockers: feedbackData.submissionBlockers ?? null,
       submittedAt: feedbackData.submittedAt ?? null,
@@ -59,8 +60,9 @@ export class TasksService {
     if (dto.proofLink !== undefined) allowed.proofLink = dto.proofLink;
 
     const hasSubmissionData =
-      dto.submissionPrLink !== undefined ||
-      dto.submissionDocLink !== undefined ||
+  dto.submissionPrLink !== undefined ||
+  dto.submissionPrLink2 !== undefined ||
+  dto.submissionDocLink !== undefined ||
       dto.submissionSummary !== undefined ||
       dto.submissionBlockers !== undefined ||
       dto.submittedAt !== undefined ||
@@ -72,7 +74,8 @@ export class TasksService {
       const nextFeedback = {
         ...currentFeedback,
         submissionPrLink: dto.submissionPrLink ?? currentFeedback.submissionPrLink ?? allowed.proofLink ?? existingTask?.proofLink ?? '',
-        submissionDocLink: dto.submissionDocLink ?? currentFeedback.submissionDocLink ?? '',
+submissionPrLink2: dto.submissionPrLink2 ?? currentFeedback.submissionPrLink2 ?? '',
+submissionDocLink: dto.submissionDocLink ?? currentFeedback.submissionDocLink ?? '',
         submissionSummary: dto.submissionSummary ?? currentFeedback.submissionSummary ?? '',
         submissionBlockers: dto.submissionBlockers ?? currentFeedback.submissionBlockers ?? '',
         submittedAt: dto.submittedAt ?? currentFeedback.submittedAt ?? '',
@@ -398,6 +401,7 @@ export class TasksService {
         'status',
         'proofLink',
         'submissionPrLink',
+        'submissionPrLink2',
         'submissionDocLink',
         'submissionSummary',
         'submissionBlockers',
@@ -427,8 +431,9 @@ const safePayload = this.buildSafeUpdatePayload(dto, task);
     
 
     const isSubmission =
-      user.role === 'INTERN' &&
-      (dto.submissionPrLink || dto.proofLink || dto.reviewStatus === 'SUBMITTED_FOR_REVIEW');
+  (user.role === 'INTERN' || user.role === 'MANAGER') &&
+  task.squad === 'TECH' &&
+  (dto.submissionPrLink || dto.proofLink || dto.reviewStatus === 'PR_SUBMITTED');
 
     const isReviewDecision =
       user.role !== 'INTERN' &&
@@ -453,10 +458,22 @@ const safePayload = this.buildSafeUpdatePayload(dto, task);
     }
 
     if (isSubmission) {
-      this.createSubmissionNotifications(updated, task, user, dto).catch((err) =>
-        this.logger.warn(`Submission notification failed: ${err?.message}`)
-      );
-    }
+  this.createSubmissionNotifications(updated, task, user, dto).catch((err) =>
+    this.logger.warn(`Submission notification failed: ${err?.message}`)
+  );
+
+  this.mailService.sendPrRequestToSir(
+    task.title,
+    user.name,
+    task.squad,
+    dto.submissionPrLink ?? dto.proofLink ?? '',
+    dto.submissionPrLink2 ?? '',
+    dto.submissionSummary ?? '',
+    dto.submittedAt,
+  ).catch((err) =>
+    this.logger.warn(`PR request email failed: ${err?.message}`)
+  );
+}
 
     if (isReviewDecision) {
       this.createReviewDecisionNotification(updated, task, user, dto).catch((err) =>
