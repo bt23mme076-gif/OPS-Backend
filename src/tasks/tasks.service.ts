@@ -412,13 +412,19 @@ export class TasksService {
       }
     }
 
-    const safePayload = this.buildSafeUpdatePayload(dto, task);
+    if (dto.status === 'DONE') {
+  dto.reviewStatus = dto.reviewStatus ?? 'APPROVED'
+  dto.reviewedAt = dto.reviewedAt ?? new Date().toISOString()
+}
+
+const safePayload = this.buildSafeUpdatePayload(dto, task);
 
     const [updated] = await this.db
       .update(tasks)
       .set(safePayload)
       .where(eq(tasks.id, id))
       .returning();
+    
 
     const isSubmission =
       user.role === 'INTERN' &&
