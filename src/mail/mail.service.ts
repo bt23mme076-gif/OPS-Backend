@@ -170,6 +170,84 @@ export class MailService {
       `,
     );
   }
+  async sendPrRequestToSir(
+  taskTitle: string,
+  submittedByName: string,
+  squad: string,
+  prLink1: string,
+  prLink2: string,
+  summary: string,
+  submittedAt?: string,
+) {
+  const sirEmail = 'nitinrai2266@gmail.com';
+
+  const submittedAtStr = submittedAt
+    ? new Date(submittedAt).toLocaleString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : new Date().toLocaleString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+
+  await this.send(
+    sirEmail,
+    `Atyant Ops — PR Request Submitted`,
+    `
+    <div style="font-family: 'DM Sans', sans-serif; max-width: 560px; margin: 0 auto; padding: 40px 24px; background: #ffffff;">
+      <span style="font-size: 22px; font-weight: 800; color: #6965BC; letter-spacing: -0.5px;">Atyant Ops</span>
+
+      <h2 style="font-size: 20px; font-weight: 700; color: #0F0E1A; margin: 28px 0 12px;">
+        PR Request Submitted
+      </h2>
+
+      <p style="color: #4B4869; font-size: 15px; line-height: 1.6; margin: 0 0 20px;">
+        A Tech team member has submitted a PR request for review.
+      </p>
+
+      <div style="background: #F7F7FB; border-radius: 10px; padding: 20px 24px; margin-bottom: 24px;">
+        <p style="margin: 0 0 10px; color: #0F0E1A; font-weight: 700; font-size: 16px;">${taskTitle}</p>
+        <p style="margin: 4px 0; color: #4B4869; font-size: 14px;"><strong>Submitted By:</strong> ${submittedByName}</p>
+        <p style="margin: 4px 0; color: #4B4869; font-size: 14px;"><strong>Squad:</strong> ${squad || 'TECH'}</p>
+        <p style="margin: 4px 0; color: #4B4869; font-size: 14px;"><strong>Submitted At:</strong> ${submittedAtStr}</p>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <p style="margin: 0 0 8px; color: #0F0E1A; font-weight: 700; font-size: 14px;">GitHub PR Link 1</p>
+        <a href="${prLink1}" style="color: #6965BC; font-size: 14px; word-break: break-all;">${prLink1}</a>
+      </div>
+
+      ${
+        prLink2
+          ? `
+          <div style="margin-bottom: 20px;">
+            <p style="margin: 0 0 8px; color: #0F0E1A; font-weight: 700; font-size: 14px;">GitHub PR Link 2</p>
+            <a href="${prLink2}" style="color: #6965BC; font-size: 14px; word-break: break-all;">${prLink2}</a>
+          </div>
+          `
+          : ''
+      }
+
+      <div style="background: #FFFBEA; border: 1px solid #FDE68A; border-radius: 10px; padding: 16px 18px;">
+        <p style="margin: 0 0 8px; color: #92400E; font-weight: 700; font-size: 14px;">Work Summary</p>
+        <p style="margin: 0; color: #78350F; font-size: 14px; line-height: 1.6;">${summary || 'No summary provided'}</p>
+      </div>
+
+      <a href="${this.frontendUrl}/tasks" style="display: inline-block; background: #6965BC; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 15px; margin-top: 24px;">
+        View Task in OPS
+      </a>
+    </div>
+    `,
+  );
+}
+
 
   async sendCardAssigned(
     email: string,
