@@ -15,6 +15,13 @@
       "when": 1780670505469,
       "tag": "0001_wooden_white_tiger",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1782487168344,
+      "tag": "0002_magical_captain_midlands",
+      "breakpoints": true
     }
   ]
 }

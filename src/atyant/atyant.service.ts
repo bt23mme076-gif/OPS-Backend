@@ -1,4 +1,4 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, Optional } from '@nestjs/common';
 import { Connection } from 'mongoose';
 import { MONGO_DB } from '../database/mongo.module';
 
@@ -7,13 +7,18 @@ export class AtyantService {
   private UserModel: any;
   private SessionModel: any;
 
-  constructor(@Inject(MONGO_DB) private mongo: Connection) {
-    this.UserModel = this.mongo.collection('users');
-    this.SessionModel = this.mongo.collection('sessions');
+  constructor(@Optional() @Inject(MONGO_DB) private mongo: Connection) {
+    if (this.mongo) {
+      this.UserModel = this.mongo.collection('users');
+      this.SessionModel = this.mongo.collection('sessions');
+    }
   }
 
   // Saare mentors
   async getMentors(limit = 50, skip = 0) {
+    if (!this.UserModel) {
+      throw new Error("MongoDB unavailable");
+    }
     return this.UserModel.find(
       { role: 'mentor' },
       {
@@ -30,6 +35,9 @@ export class AtyantService {
 
   // Active mentors (last 7 days)
   async getActiveMentors() {
+    if (!this.UserModel) {
+      throw new Error("MongoDB unavailable");
+    }
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     return this.UserModel.find(
       { role: 'mentor', lastActive: { $gte: sevenDaysAgo } },
@@ -39,6 +47,9 @@ export class AtyantService {
 
   // Saare users (students)
   async getUsers(limit = 50, skip = 0) {
+    if (!this.UserModel) {
+      throw new Error("MongoDB unavailable");
+    }
     return this.UserModel.find(
       { role: 'user' },
       { projection: { password: 0, accessToken: 0, refreshToken: 0 } }
@@ -47,6 +58,9 @@ export class AtyantService {
 
   // Stats for dashboard
   async getStats() {
+    if (!this.UserModel) {
+      throw new Error("MongoDB unavailable");
+    }
     const [totalMentors, activeMentors, totalUsers, onlineMentors] = await Promise.all([
       this.UserModel.countDocuments({ role: 'mentor' }),
       this.UserModel.countDocuments({
@@ -61,10 +75,10 @@ export class AtyantService {
   }
 
   // ── Sessions ──────────────────────────────────────────────────────────────
-  // Returns sessions enriched with the student's name/email (looked up from
-  // the `users` collection by userId). `status` optionally filters; the special
-  // value 'upcoming' returns future, non-cancelled/completed sessions.
   async getSessions(status?: string, limit = 200, skip = 0) {
+    if (!this.SessionModel) {
+      throw new Error("MongoDB unavailable");
+    }
     const match: any = {};
     if (status && status !== 'all') {
       if (status === 'upcoming') {
@@ -104,6 +118,9 @@ export class AtyantService {
   }
 
   async getSessionStats() {
+    if (!this.SessionModel) {
+      throw new Error("MongoDB unavailable");
+    }
     const now = new Date();
     const weekFromNow = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     const [total, upcoming, thisWeek, completed, cancelled, pending, revenueAgg] =
@@ -139,6 +156,9 @@ export class AtyantService {
 
   // Search mentors
   async searchMentors(query: string) {
+    if (!this.UserModel) {
+      throw new Error("MongoDB unavailable");
+    }
     return this.UserModel.find(
       {
         role: 'mentor',

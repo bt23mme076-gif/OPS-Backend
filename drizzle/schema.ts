@@ -5,12 +5,33 @@ import {
   boolean,
   integer,
   real,
-  jsonb,
   pgEnum,
   uuid,
   varchar,
+  customType,
 } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
+
+// Custom jsonb type mapping to bypass double stringification with postgres-js
+const jsonb = customType({
+  dataType() {
+    return 'jsonb';
+  },
+  toDriver(value) {
+    return value; // Send directly as object/value to driver
+  },
+  fromDriver(value) {
+    if (typeof value === 'string') {
+      try {
+        return JSON.parse(value);
+      } catch {
+        return value;
+      }
+    }
+    return value;
+  },
+});
+
 
 // ─── ENUMS ────────────────────────────────────────────────────────────────────
 
@@ -826,3 +847,13 @@ export const linkedinLeadsRelations = relations(linkedinLeads, ({ one }) => ({
     references: [users.id],
   }),
 }));
+
+// ─── UPLOADED POSTS ───────────────────────────────────────────────────────────
+
+export const uploadedPosts = pgTable('uploaded_posts', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  platform: text('platform').notNull(),
+  postUrl: text('post_url').notNull(),
+  uploadedBy: text('uploaded_by').notNull(),
+  createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
+});

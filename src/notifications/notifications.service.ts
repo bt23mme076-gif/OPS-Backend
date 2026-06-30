@@ -23,8 +23,10 @@ export class NotificationsService {
       id:        n.id,
       title:     n.title,
       body:      n.message,   // schema has 'message', frontend expects 'body'
+      message:   n.message,
       type:      n.type,
       isRead:    n.isRead,
+      metadata:  n.metadata,  // pass through so frontend can read postUrl etc.
       createdAt: n.createdAt,
     }));
   }
