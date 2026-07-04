@@ -11,10 +11,11 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { TasksModule } from './tasks/tasks.module';
 import { MongoModule } from './database/mongo.module';
-import { AtyantModule } from './atyant/atyant.module';
+//import { AtyantModule } from './atyant/atyant.module';
 import { OutreachModule } from './outreach/outreach.module';
 import { ContentModule } from './content/content.module';
 import { LinkedinModule } from './linkedin/linkedin.module';
+import { AnnouncementsModule } from './announcements/announcements.module';
 
 @Module({
   imports: [
@@ -30,10 +31,11 @@ import { LinkedinModule } from './linkedin/linkedin.module';
     DashboardModule,
     TasksModule,
     MongoModule,
-    AtyantModule,
+    //AtyantModule,
     OutreachModule,
     ContentModule,
     LinkedinModule,
+    AnnouncementsModule,
   ],
 })
 export class AppModule {}
