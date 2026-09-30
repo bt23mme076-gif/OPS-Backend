@@ -286,6 +286,8 @@ export const users = pgTable('users', {
   whatsappNumber: varchar('whatsapp_number', { length: 20 }),
   linkedinUrl: varchar('linkedin_url', { length: 500 }),
   githubUsername: varchar('github_username', { length: 100 }),
+  passwordResetToken: text('password_reset_token'),
+  passwordResetExpiry: timestamp('password_reset_expiry', { mode: 'string' }),
   invitedBy: uuid('invited_by').references(() => users.id),
   joinedAt: timestamp('joined_at', { mode: 'string' }).defaultNow(),
   createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
